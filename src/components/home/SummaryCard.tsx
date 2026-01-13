@@ -27,6 +27,11 @@ interface Totals {
     income: number
 }
 
+interface TransactionSummary {
+    type: 'income' | 'expense'
+    amount: number
+}
+
 export function SummaryCard() {
     const supabase = createClient()
     const queryClient = useQueryClient()
