@@ -38,7 +38,7 @@ export function InactivityHandler() {
         // Force unregister any existing service workers to prevent caching ghosts.
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                for (let registration of registrations) {
+                for (const registration of registrations) {
                     console.log('🛡️ Security: Unregistering Service Worker:', registration)
                     registration.unregister()
                 }
@@ -70,13 +70,11 @@ export function InactivityHandler() {
             const currentTime = Date.now()
 
             // Get navigation type to distinguish Reload vs Restore
-            // This is critical: Chrome Restore usually comes as 'navigate' type, but with restored sessionStorage.
-            // A normal 'navigate' (clicking a link) usually has empty sessionStorage.
             const navEntry = typeof performance !== 'undefined' ? performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming : null
             const isReload = navEntry?.type === 'reload'
 
             // Stale Threshold: 
-            // If Reload (F5): 30 seconds allowance (lenient).
+            // If Reload (F5): 30 seconds allowance.
             // If Navigate/Restore: 3 seconds Strict allowance.
             const threshold = isReload ? 30000 : 3000
 
@@ -128,6 +126,7 @@ export function InactivityHandler() {
             events.forEach(e => window.removeEventListener(e, handleActivity))
             window.removeEventListener('beforeunload', handleUnload)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     return null
