@@ -13,6 +13,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -39,7 +40,7 @@ export default function PaymentMethodManagementPage() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('payment_methods')
-                .select('*')
+                .select('id, name, user_id')
                 .order('name')
             if (error) throw error
             return data as PaymentMethod[]
@@ -212,6 +213,9 @@ export default function PaymentMethodManagementPage() {
                         <DialogTitle className="text-xl font-bold text-white">
                             {editingMethod ? '결제 수단 수정' : '새 결제 수단 추가'}
                         </DialogTitle>
+                        <DialogDescription className="text-slate-500 text-xs">
+                            지출 내역 기록 시 사용할 결제 수단 정보를 관리합니다.
+                        </DialogDescription>
                     </DialogHeader>
 
                     <form onSubmit={handleSubmit} className="space-y-6 pt-4">

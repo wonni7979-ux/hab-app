@@ -15,6 +15,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -282,6 +283,9 @@ export default function BudgetManagementPage() {
                         <DialogTitle className="text-xl font-bold text-white">
                             {displayMonth} 예산 설정
                         </DialogTitle>
+                        <DialogDescription className="text-slate-500 text-xs">
+                            해당 월의 소비 목표를 설정하여 예산을 관리합니다.
+                        </DialogDescription>
                     </DialogHeader>
 
                     <form onSubmit={handleSubmit} className="space-y-6 pt-4">
