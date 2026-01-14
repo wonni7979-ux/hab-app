@@ -29,6 +29,26 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
+    // --- [Expert Security] Strict Session Guard ---
+    // Chrome's "Continue where you left off" can restore session cookies.
+    // We check for a specific 'app_session_active' guard cookie.
+    const isSessionActive = request.cookies.get('app_session_active')
+    const hasAuthCookie = request.cookies.getAll().some(c => c.name.startsWith('sb-'))
+
+    // If we have auth cookies but NO guard cookie, it means the browser process was restarted.
+    // We MUST purge the auth cookies to enforce security.
+    if (!isSessionActive && hasAuthCookie && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
+        console.log('🛡️ Guard: Stale session detected. Purging auth cookies...')
+        const response = NextResponse.redirect(new URL('/login', request.url))
+        // Delete all supabase related cookies
+        request.cookies.getAll().forEach(cookie => {
+            if (cookie.name.startsWith('sb-')) {
+                response.cookies.delete(cookie.name)
+            }
+        })
+        return response
+    }
+
     // 중요: 상호 검증(auth.getUser())을 통해 세션을 실시간으로 갱신합니다.
     const {
         data: { user },
@@ -39,7 +59,6 @@ export async function updateSession(request: NextRequest) {
         !request.nextUrl.pathname.startsWith('/login') &&
         !request.nextUrl.pathname.startsWith('/auth')
     ) {
-        // 사용자가 로그인되어 있지 않고 로그인/인증 페이지로 이동 중이 아닌 경우 로그인 페이지로 리다이렉트합니다.
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)

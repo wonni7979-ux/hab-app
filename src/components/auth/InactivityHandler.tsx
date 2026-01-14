@@ -34,33 +34,46 @@ export function InactivityHandler() {
     }
 
     useEffect(() => {
-        // --- Strict Session Sync Logic (Anti-Zombie Session) ---
-        const checkSessionSync = async () => {
-            // Check if this specific tab/window has an active session flag
-            const isSessionActive = sessionStorage.getItem('sb-session-active')
+        // --- [Expert Security] Strict Session & Storage Cleanup ---
+        const initSecurity = async () => {
+            // 1. Aggressively clear any leftover Supabase storage (LocalStorage)
+            // This prevents old tokens from being used for re-hydration.
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-')) {
+                    localStorage.removeItem(key)
+                }
+            })
 
-            // If the flag is missing, it means this is a fresh window/tab.
-            if (!isSessionActive) {
-                // If we detect a user persisting in cookies despite being a new tab,
-                // we force an immediate sign out to ensure the "logout on close" behavior.
+            // 2. Check for Session Storage Flag (Tab Session)
+            const isTabActive = sessionStorage.getItem('app-tab-active')
+
+            if (!isTabActive) {
+                // Fresh tab session detected.
+                // We check if we already have a server-side user.
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
-                    console.log('🛡️ Security: Ghost session detected in fresh tab. Purging credentials...')
+                    console.log('🛡️ Security: Purging ghost session...')
                     await supabase.auth.signOut()
-                    // Set flag AFTER sign out to prevent infinite loop
-                    sessionStorage.setItem('sb-session-active', 'checked')
+                    // Clear the guard cookie manually just in case
+                    document.cookie = 'app_session_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
+                    sessionStorage.setItem('app-tab-active', 'true')
                     router.refresh()
                     router.push('/login')
                     return
                 }
 
-                // Mark this specific window session as active/checked even if no session was found
-                sessionStorage.setItem('sb-session-active', 'checked')
+                // If no user, just mark the tab as active
+                sessionStorage.setItem('app-tab-active', 'true')
             }
+
+            // 3. Set/Update the 'app_session_active' guard cookie (Session-only)
+            // This cookie has NO maxAge, so it *should* die when browser closes,
+            // but if it survives (Chrome recovery), the sessionStorage check above will catch it.
+            document.cookie = 'app_session_active=1; path=/; samesite=lax'
         }
 
-        checkSessionSync()
+        initSecurity()
 
         // --- Inactivity Timer Logic ---
         resetTimer()
