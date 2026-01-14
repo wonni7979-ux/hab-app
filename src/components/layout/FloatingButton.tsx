@@ -24,14 +24,7 @@ export function FloatingButton() {
     return (
         <Drawer open={open} onOpenChange={setOpen}>
             <div className="fixed bottom-[100px] left-0 right-0 z-[60] pointer-events-none flex justify-center px-6">
-                <div className="w-full max-w-md relative flex justify-end gap-3 pointer-events-auto">
-                    <button
-                        className="bg-slate-800/90 backdrop-blur-md text-white rounded-full px-5 py-2.5 flex items-center gap-2 shadow-xl border border-white/10 active:scale-95 transition-transform"
-                        onClick={() => setOpen(true)}
-                    >
-                        <span className="text-lg">🍴</span>
-                        <span className="text-xs font-bold whitespace-nowrap">식비 입력</span>
-                    </button>
+                <div className="w-full max-w-md relative flex justify-end pointer-events-auto">
                     <DrawerTrigger asChild>
                         <Button
                             className="h-14 w-14 rounded-full shadow-2xl bg-primary hover:bg-primary/90 text-white transition-transform active:scale-90 border-4 border-white/10"
