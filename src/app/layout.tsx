@@ -35,6 +35,10 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+import Script from "next/script";
+
+export const dynamic = 'force-dynamic'
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -42,6 +46,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        {/* [Expert Security] Instant PWA Kill Switch */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                  for(let reg of regs) reg.unregister().then(() => console.log('🛡️ Security: SW Unregistered Path: ' + reg.scope));
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 min-h-screen pb-20`}
       >

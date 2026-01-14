@@ -47,8 +47,8 @@ export async function updateSession(request: NextRequest) {
             // VERIFY THE TIMESTAMP INSIDE THE COOKIE
             // Chrome restores session cookies, but the timestamp inside the value will be OLD.
             const presenceTime = parseInt(presenceCookie.value || '0')
-            if (isNaN(presenceTime) || (currentTime - presenceTime > 15000)) {
-                isZombie = true // Heartbeat is a ghost from the past
+            if (isNaN(presenceTime) || (currentTime - presenceTime > 7000)) {
+                isZombie = true // Heartbeat is a ghost from the past (> 7s old)
             }
         }
 

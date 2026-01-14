@@ -1,11 +1,4 @@
 import type { NextConfig } from "next";
-const withPWA = require("next-pwa")({
-  dest: "public",
-  disable: true, // 프로세스 안정화될 때까지 잠정 비활성화 (보안 우선)
-  register: false,
-  skipWaiting: true,
-  runtimeCaching: []
-});
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -17,7 +10,8 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate, proxy-revalidate'
+            // Absolute disablement of all caching to prevent stale dashboard views
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
           },
           {
             key: 'Pragma',
@@ -33,4 +27,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default nextConfig;

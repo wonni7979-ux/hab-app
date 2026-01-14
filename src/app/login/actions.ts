@@ -49,15 +49,20 @@ export async function signup(formData: FormData) {
 export async function signout() {
     const supabase = await createClient()
 
-    // 1. Supabase SignOut (Revokes session on server)
+    // 1. Revoke session on Supabase server
     await supabase.auth.signOut()
 
-    // 2. NUCLEAR PURGE: Physically delete all cookies in the store
+    // 2. NUCLEAR PHYSICAL DELETE: Force all cookies to die with explicit path
     const { cookies } = await import('next/headers')
     const cookieStore = await cookies()
-    cookieStore.getAll().forEach(cookie => {
-        cookieStore.delete(cookie.name)
-    })
+    const allCookies = cookieStore.getAll()
+
+    for (const cookie of allCookies) {
+        cookieStore.delete({
+            name: cookie.name,
+            path: '/', // Explicitly target root path where most auth cookies live
+        })
+    }
 
     revalidatePath('/', 'layout')
     redirect('/login')
