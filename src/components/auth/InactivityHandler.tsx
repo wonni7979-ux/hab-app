@@ -11,6 +11,7 @@ export function InactivityHandler() {
     const router = useRouter()
     const supabase = createClient()
     const timerRef = useRef<NodeJS.Timeout | null>(null)
+    const presenceIntervalRef = useRef<NodeJS.Timeout | null>(null)
     const [isChecking, setIsChecking] = useState(true)
 
     const handleLogout = async () => {
@@ -37,21 +38,13 @@ export function InactivityHandler() {
             })
         }
 
-        // 2. Heartbeat Updater (Hyper-Short TTL: 5s)
         const updatePresence = () => {
             sessionStorage.setItem('last_active_timestamp', Date.now().toString())
-            // CRITICAL: Max-age is 5s. If user is gone for 5s, they are logged out.
             document.cookie = `session_presence=active; path=/; max-age=5; samesite=lax`
         }
-        updatePresence()
-        const presenceInterval = setInterval(updatePresence, 2000)
 
-        // 3. Boot Validation
+        // --- [CRITICAL FIX] 2. Boot Validation FIRST ---
         const initSecurity = async () => {
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('sb-')) localStorage.removeItem(key)
-            })
-
             const lastActiveTime = sessionStorage.getItem('last_active_timestamp')
             const currentTime = Date.now()
 
@@ -61,19 +54,20 @@ export function InactivityHandler() {
                 if (navEntry && navEntry.type === 'reload') isReload = true
             }
 
-            // Stale Threshold: 5 seconds (Strict)
-            // Even on reload, we only allow 5 seconds gap for the heart to stay alive.
+            // Stale Threshold: 5 seconds
             const threshold = isReload ? 10000 : 3000
-
             const timeGap = lastActiveTime ? currentTime - parseInt(lastActiveTime) : 0
             const isStale = lastActiveTime && (timeGap > threshold)
-            const isTabActive = sessionStorage.getItem('app-tab-active')
 
-            if (!isTabActive || isStale) {
+            // sessionStorage is unique per tab but stays during refresh.
+            // If it's a NEW session/tab, 'app-tab-active' will be missing.
+            const isFirstTabAccess = !sessionStorage.getItem('app-tab-active')
+
+            if (isFirstTabAccess || isStale) {
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
-                    console.log(`🛡️ Security: Blocking access. Reason: ${isStale ? 'Stale' : 'First Access'}`)
+                    console.log(`🛡️ Security: Invalid/Restored session killed. Reason: ${isStale ? 'Stale' : 'NewSession'}`)
                     await supabase.auth.signOut()
                     document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
                     sessionStorage.clear()
@@ -83,6 +77,10 @@ export function InactivityHandler() {
                 }
                 sessionStorage.setItem('app-tab-active', 'true')
             }
+
+            // ONLY start heartbeating AFTER we've verified the old state isn't a zombie.
+            updatePresence()
+            presenceIntervalRef.current = setInterval(updatePresence, 2000)
 
             setIsChecking(false)
         }
@@ -94,27 +92,20 @@ export function InactivityHandler() {
         const handleActivity = () => resetTimer()
         events.forEach(e => window.addEventListener(e, handleActivity))
 
-        const handleUnload = () => {
-            // We don't clear here because we want F5/Navigate to work.
-            // But we dirty the timestamp so the 3s/5s check works on reopen.
-        }
-        window.addEventListener('beforeunload', handleUnload)
-
         return () => {
-            clearInterval(presenceInterval)
+            if (presenceIntervalRef.current) clearInterval(presenceIntervalRef.current)
             if (timerRef.current) clearTimeout(timerRef.current)
             events.forEach(e => window.removeEventListener(e, handleActivity))
-            window.removeEventListener('beforeunload', handleUnload)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     if (isChecking) {
         return (
-            <div className="fixed inset-0 z-[99999] bg-slate-950 flex items-center justify-center">
+            <div className="fixed inset-0 z-[99999] bg-[#0b0f19] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-                    <p className="text-slate-400 text-sm font-medium tracking-tight">안전한 세션 연결 중...</p>
+                    <p className="text-slate-400 text-sm font-medium tracking-tight">보안 상태 확인 중...</p>
                 </div>
             </div>
         )
