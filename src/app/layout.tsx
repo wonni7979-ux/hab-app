@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { FloatingButton } from "@/components/layout/FloatingButton";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { InactivityHandler } from "@/components/auth/InactivityHandler";
 
@@ -35,8 +36,6 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-import Script from "next/script";
-
 export const dynamic = 'force-dynamic'
 
 export default function RootLayout({
@@ -68,6 +67,7 @@ export default function RootLayout({
           <main className="max-w-md mx-auto bg-white min-h-screen shadow-sm relative">
             {children}
           </main>
+          <FloatingButton />
           <BottomNav />
         </QueryProvider>
         <Toaster position="top-center" richColors />

@@ -2,7 +2,6 @@ import { DashboardHeader } from '@/components/home/DashboardHeader'
 import { CalendarSection } from '@/components/home/CalendarSection'
 import { BudgetDonutCard } from '@/components/home/BudgetDonutCard'
 import { AISummaryCard } from '@/components/home/AISummaryCard'
-import { FloatingButton } from '@/components/layout/FloatingButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,8 +15,6 @@ export default async function HomePage() {
         <BudgetDonutCard />
         <AISummaryCard />
       </div>
-
-      <FloatingButton />
     </div>
   )
 }
