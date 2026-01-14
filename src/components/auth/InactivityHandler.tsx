@@ -15,14 +15,12 @@ export function InactivityHandler() {
     const [isChecking, setIsChecking] = useState(true)
 
     const handleLogout = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-            await supabase.auth.signOut()
-            sessionStorage.clear()
-            document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
-            toast.info('장시간 미사용으로 로그아웃되었습니다.', { duration: 5000, icon: '🔐' })
-            window.location.href = '/login'
-        }
+        setIsChecking(true)
+        const { signout } = await import('@/app/login/actions')
+        await signout()
+        sessionStorage.clear()
+        document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
+        window.location.href = '/login'
     }
 
     const resetTimer = () => {
@@ -31,21 +29,15 @@ export function InactivityHandler() {
     }
 
     useEffect(() => {
-        // 1. [CRITICAL] Kill ALL Service Workers
-        // PWA caching is the primary suspect for "home screen appearing" despite logout.
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (const registration of registrations) {
-                    console.log('🛡️ Security: Force Killing Service Worker...')
-                    registration.unregister()
-                }
+                for (const registration of registrations) registration.unregister()
             })
         }
 
         const updatePresence = () => {
             const now = Date.now().toString()
             sessionStorage.setItem('last_active_timestamp', now)
-            // SET TIMESTAMP AS VALUE: This allows the server to detect RESTORED zombie cookies.
             document.cookie = `session_presence=${now}; path=/; max-age=10; samesite=lax`
         }
 
@@ -59,6 +51,7 @@ export function InactivityHandler() {
                 if (navEntry && navEntry.type === 'reload') isReload = true
             }
 
+            // Normal Flow: 3s threshold. Reload Flow: 15s drift allowance.
             const threshold = isReload ? 15000 : 3000
             const timeGap = lastActiveTime ? currentTime - parseInt(lastActiveTime) : 0
             const isStale = lastActiveTime && (timeGap > threshold)
@@ -68,10 +61,11 @@ export function InactivityHandler() {
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
-                    await supabase.auth.signOut()
-                    document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
+                    console.log(`🛡️ Security Check: Failed. Stale=${isStale}, FirstAccess=${isFirstTabAccess}`)
+                    const { signout } = await import('@/app/login/actions')
+                    await signout()
                     sessionStorage.clear()
-                    sessionStorage.setItem('app-tab-active', 'true')
+                    document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
                     window.location.href = '/login'
                     return
                 }
@@ -103,7 +97,10 @@ export function InactivityHandler() {
             <div className="fixed inset-0 z-[99999] bg-[#0b0f19] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-                    <p className="text-slate-400 text-sm font-medium tracking-tight">강력한 보안 세션 초기화 중...</p>
+                    <p className="text-slate-400 text-sm font-medium tracking-tight px-6 text-center">
+                        보안 세션 확인 중입니다.<br />
+                        잠시만 기다려 주세요.
+                    </p>
                 </div>
             </div>
         )

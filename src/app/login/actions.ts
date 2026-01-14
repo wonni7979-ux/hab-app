@@ -48,7 +48,17 @@ export async function signup(formData: FormData) {
 
 export async function signout() {
     const supabase = await createClient()
+
+    // 1. Supabase SignOut (Revokes session on server)
     await supabase.auth.signOut()
+
+    // 2. NUCLEAR PURGE: Physically delete all cookies in the store
+    const { cookies } = await import('next/headers')
+    const cookieStore = await cookies()
+    cookieStore.getAll().forEach(cookie => {
+        cookieStore.delete(cookie.name)
+    })
+
     revalidatePath('/', 'layout')
     redirect('/login')
 }
