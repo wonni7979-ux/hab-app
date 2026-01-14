@@ -34,7 +34,27 @@ export function InactivityHandler() {
     }
 
     useEffect(() => {
-        // Initialize the timer
+        // --- Session Sync Logic (Anti-Recompute) ---
+        const checkSessionSync = async () => {
+            // Check if this is a fresh window session
+            const isSessionActive = sessionStorage.getItem('sb-session-active')
+
+            if (!isSessionActive) {
+                // This is a new window/tab session. 
+                // Ensure we are truly logged out if cookies persisted.
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    await supabase.auth.signOut()
+                    router.refresh()
+                }
+                // Mark this specific window session as active
+                sessionStorage.setItem('sb-session-active', 'true')
+            }
+        }
+
+        checkSessionSync()
+
+        // --- Inactivity Timer Logic ---
         resetTimer()
 
         // List of events to monitor
