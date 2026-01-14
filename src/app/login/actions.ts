@@ -21,9 +21,10 @@ export async function login(formData: FormData) {
     revalidatePath('/', 'layout')
 
     // Set initial presence signal to pass middleware on first redirect
+    const now = Date.now().toString()
     const { cookies } = await import('next/headers')
     const cookieStore = await cookies()
-    cookieStore.set('session_presence', 'active', { maxAge: 25, path: '/', sameSite: 'lax' })
+    cookieStore.set('session_presence', now, { maxAge: 25, path: '/', sameSite: 'lax' })
 
     redirect('/')
 }
