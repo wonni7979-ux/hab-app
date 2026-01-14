@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 const withPWA = require("next-pwa")({
   dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  register: true,
+  disable: true, // 프로세스 안정화될 때까지 잠정 비활성화 (보안 우선)
+  register: false,
   skipWaiting: true,
   runtimeCaching: []
 });

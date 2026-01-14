@@ -20,12 +20,9 @@ export async function updateSession(request: NextRequest) {
                         request,
                     })
                     cookiesToSet.forEach(({ name, value, options }) => {
-                        // [CRITICAL FIX] If maxAge is 0, it means Supabase is trying to DELETE the cookie.
-                        // We must let it through, otherwise logout won't work.
                         if (options?.maxAge === 0) {
                             supabaseResponse.cookies.set(name, value, options)
                         } else {
-                            // For regular sets, strip maxAge/expires to make it a session cookie (Absolute Security).
                             const { maxAge, expires, ...rest } = options || {}
                             supabaseResponse.cookies.set(name, value, rest)
                         }
@@ -35,22 +32,37 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    // --- [Expert Security] Ultimate Heartbeat Guard ---
-    const hasPresenceSignal = request.cookies.has('session_presence')
+    // --- [Expert Security] Ultimate Heartbeat & Zombie Guard ---
+    const presenceCookie = request.cookies.get('session_presence')
     const hasAuthCookies = request.cookies.getAll().some(c => c.name.startsWith('sb-'))
-
     const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth')
 
-    // If auth cookies exist but Heartbeat is MISSIONG on a protected route, it's a zombie session.
-    if (hasAuthCookies && !hasPresenceSignal && !isAuthPage) {
-        console.log('🚨 Guard: Zombie session detected via Heartbeat failure. Purging...')
-        const response = NextResponse.redirect(new URL('/login', request.url))
-        request.cookies.getAll().forEach(cookie => {
-            if (cookie.name.startsWith('sb-')) {
-                response.cookies.delete(cookie.name)
+    if (hasAuthCookies && !isAuthPage) {
+        let isZombie = false
+        const currentTime = Date.now()
+
+        if (!presenceCookie) {
+            isZombie = true // No heartbeat at all
+        } else {
+            // VERIFY THE TIMESTAMP INSIDE THE COOKIE
+            // Chrome restores session cookies, but the timestamp inside the value will be OLD.
+            const presenceTime = parseInt(presenceCookie.value || '0')
+            if (isNaN(presenceTime) || (currentTime - presenceTime > 15000)) {
+                isZombie = true // Heartbeat is a ghost from the past
             }
-        })
-        return response
+        }
+
+        if (isZombie) {
+            console.log('🚨 Guard: Zombie session/cookie detected. Purging...')
+            const response = NextResponse.redirect(new URL('/login', request.url))
+
+            // Strong purge: Delete all cookies and set no-cache
+            request.cookies.getAll().forEach(cookie => {
+                response.cookies.delete(cookie.name)
+            })
+            response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+            return response
+        }
     }
 
     // 세션 실시간 갱신
@@ -61,8 +73,12 @@ export async function updateSession(request: NextRequest) {
     if (!user && !isAuthPage) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
-        return NextResponse.redirect(url)
+        const response = NextResponse.redirect(url)
+        response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+        return response
     }
 
+    // Reinforce no-cache on all protected responses
+    supabaseResponse.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
     return supabaseResponse
 }

@@ -31,19 +31,24 @@ export function InactivityHandler() {
     }
 
     useEffect(() => {
-        // 1. Service Worker Kill Switch
+        // 1. [CRITICAL] Kill ALL Service Workers
+        // PWA caching is the primary suspect for "home screen appearing" despite logout.
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (const registration of registrations) registration.unregister()
+                for (const registration of registrations) {
+                    console.log('🛡️ Security: Force Killing Service Worker...')
+                    registration.unregister()
+                }
             })
         }
 
         const updatePresence = () => {
-            sessionStorage.setItem('last_active_timestamp', Date.now().toString())
-            document.cookie = `session_presence=active; path=/; max-age=5; samesite=lax`
+            const now = Date.now().toString()
+            sessionStorage.setItem('last_active_timestamp', now)
+            // SET TIMESTAMP AS VALUE: This allows the server to detect RESTORED zombie cookies.
+            document.cookie = `session_presence=${now}; path=/; max-age=10; samesite=lax`
         }
 
-        // --- [CRITICAL FIX] 2. Boot Validation FIRST ---
         const initSecurity = async () => {
             const lastActiveTime = sessionStorage.getItem('last_active_timestamp')
             const currentTime = Date.now()
@@ -54,20 +59,15 @@ export function InactivityHandler() {
                 if (navEntry && navEntry.type === 'reload') isReload = true
             }
 
-            // Stale Threshold: 5 seconds
-            const threshold = isReload ? 10000 : 3000
+            const threshold = isReload ? 15000 : 3000
             const timeGap = lastActiveTime ? currentTime - parseInt(lastActiveTime) : 0
             const isStale = lastActiveTime && (timeGap > threshold)
-
-            // sessionStorage is unique per tab but stays during refresh.
-            // If it's a NEW session/tab, 'app-tab-active' will be missing.
             const isFirstTabAccess = !sessionStorage.getItem('app-tab-active')
 
             if (isFirstTabAccess || isStale) {
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
-                    console.log(`🛡️ Security: Invalid/Restored session killed. Reason: ${isStale ? 'Stale' : 'NewSession'}`)
                     await supabase.auth.signOut()
                     document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
                     sessionStorage.clear()
@@ -78,10 +78,8 @@ export function InactivityHandler() {
                 sessionStorage.setItem('app-tab-active', 'true')
             }
 
-            // ONLY start heartbeating AFTER we've verified the old state isn't a zombie.
             updatePresence()
             presenceIntervalRef.current = setInterval(updatePresence, 2000)
-
             setIsChecking(false)
         }
 
@@ -105,7 +103,7 @@ export function InactivityHandler() {
             <div className="fixed inset-0 z-[99999] bg-[#0b0f19] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-                    <p className="text-slate-400 text-sm font-medium tracking-tight">보안 상태 확인 중...</p>
+                    <p className="text-slate-400 text-sm font-medium tracking-tight">강력한 보안 세션 초기화 중...</p>
                 </div>
             </div>
         )
