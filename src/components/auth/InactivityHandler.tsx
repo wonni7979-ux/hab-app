@@ -34,63 +34,76 @@ export function InactivityHandler() {
     }
 
     useEffect(() => {
-        // --- [Expert Security] Ultimate Heartbeat Presence Signal ---
+        // --- [Expert Security] Service Worker Kill Switch ---
+        // Force unregister any existing service workers to prevent caching ghosts.
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                for (let registration of registrations) {
+                    console.log('🛡️ Security: Unregistering Service Worker:', registration)
+                    registration.unregister()
+                }
+            })
+        }
+
+        // --- [Expert Security] Hyper-Strict Heartbeat ---
         const updatePresence = () => {
-            // Set a short-lived presence cookie (25 seconds)
-            document.cookie = `session_presence=active; path=/; max-age=25; samesite=lax`
-            // Update timestamp in storage for "Stale Restore" detection
+            // Update timestamp constantly (Every 2 seconds)
             sessionStorage.setItem('last_active_timestamp', Date.now().toString())
+            document.cookie = `session_presence=active; path=/; max-age=10; samesite=lax`
         }
 
         // Initial update
         updatePresence()
 
-        // Update presence every 10 seconds
-        const presenceInterval = setInterval(updatePresence, 10000)
+        // Update presence every 2 seconds
+        const presenceInterval = setInterval(updatePresence, 2000)
 
-        // --- [Expert Security] Strict Session & Storage Cleanup ---
+        // --- [Expert Security] Boot Validation ---
         const initSecurity = async () => {
-            // 1. Aggressively clear any leftover Supabase storage (LocalStorage)
+            // 1. Aggressively clear legacy storage
             Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('sb-')) {
-                    localStorage.removeItem(key)
-                }
+                if (key.startsWith('sb-')) localStorage.removeItem(key)
             })
 
-            // 2. Tab Session Validation (Timestamp Check)
+            // 2. Tab Session Validation (Timestamp & Navigation Type)
             const lastActiveTime = sessionStorage.getItem('last_active_timestamp')
             const currentTime = Date.now()
 
-            // If we have a stored timestamp, check if it's "stale" (e.g., > 1 minute old)
-            // This detects if Chrome "restored" the session storage from a long time ago.
-            const isStale = lastActiveTime && (currentTime - parseInt(lastActiveTime) > 60000)
+            // Get navigation type to distinguish Reload vs Restore
+            // This is critical: Chrome Restore usually comes as 'navigate' type, but with restored sessionStorage.
+            // A normal 'navigate' (clicking a link) usually has empty sessionStorage.
+            const navEntry = typeof performance !== 'undefined' ? performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming : null
+            const isReload = navEntry?.type === 'reload'
 
-            // logic:
-            // 1. If NO lastActiveTime (Fresh Tab) -> Logout (unless first login)
-            // 2. If isStale (Restored Stale Session) -> Logout
+            // Stale Threshold: 
+            // If Reload (F5): 30 seconds allowance (lenient).
+            // If Navigate/Restore: 3 seconds Strict allowance.
+            const threshold = isReload ? 30000 : 3000
 
-            // We need to differentiate "First Login" from "Refresh".
-            // 'app-tab-active' is simpler. Let's combine.
+            // If we have a stored timestamp, check if it's "stale"
+            const isStale = lastActiveTime && (currentTime - parseInt(lastActiveTime) > threshold)
+
             const isTabActive = sessionStorage.getItem('app-tab-active')
 
+            // logic: 
+            // - If NO 'app-tab-active' (Fresh Tab) -> Logout
+            // - If 'app-tab-active' EXISTS but isStale -> Logout (This catches Chrome Restore)
             if (!isTabActive || isStale) {
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
-                    console.log('🛡️ Security: Purging stale/ghost session (Reason: ' + (isStale ? 'Stale' : 'New Tab') + ')...')
+                    console.log(`🛡️ Security: Purging session. Reason: ${isStale ? 'Stale Timestamp' : 'Fresh Tab'}. Type: ${navEntry?.type || 'unknown'}. Gap: ${currentTime - parseInt(lastActiveTime || '0')}ms`)
                     await supabase.auth.signOut()
+
                     document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
-                    sessionStorage.clear() // Clear all storage
-                    sessionStorage.setItem('app-tab-active', 'true') // Reset for next login
+                    sessionStorage.clear()
+                    sessionStorage.setItem('app-tab-active', 'true')
                     router.refresh()
                     router.push('/login')
                     return
                 }
                 sessionStorage.setItem('app-tab-active', 'true')
             }
-
-            // 3. Set/Update the 'app_session_active' guard cookie (Session-only)
-            document.cookie = 'app_session_active=1; path=/; samesite=lax'
         }
 
         initSecurity()
@@ -98,29 +111,24 @@ export function InactivityHandler() {
         // --- Inactivity Timer Logic ---
         resetTimer()
 
-        // List of events to monitor
         const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove']
+        const handleActivity = () => resetTimer()
+        events.forEach(e => window.addEventListener(e, handleActivity))
 
-        const handleActivity = () => {
-            resetTimer()
+        // --- [Expert Security] Before Unload Cleanup ---
+        const handleUnload = () => {
+            // Try to dirty the state on close
+            sessionStorage.removeItem('app-tab-active')
         }
+        window.addEventListener('beforeunload', handleUnload)
 
-        // Add event listeners
-        events.forEach(event => {
-            window.addEventListener(event, handleActivity)
-        })
-
-        // Cleanup
         return () => {
             clearInterval(presenceInterval)
-            if (timerRef.current) {
-                clearTimeout(timerRef.current)
-            }
-            events.forEach(event => {
-                window.removeEventListener(event, handleActivity)
-            })
+            if (timerRef.current) clearTimeout(timerRef.current)
+            events.forEach(e => window.removeEventListener(e, handleActivity))
+            window.removeEventListener('beforeunload', handleUnload)
         }
     }, [])
 
-    return null // This component doesn't render anything
+    return null
 }
