@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { BottomNav } from "@/components/layout/BottomNav";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { InactivityHandler } from "@/components/auth/InactivityHandler";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 min-h-screen pb-20`}
       >
         <QueryProvider>
+          <InactivityHandler />
           <main className="max-w-md mx-auto bg-white min-h-screen shadow-sm relative">
             {children}
           </main>
