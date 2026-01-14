@@ -20,9 +20,15 @@ export async function updateSession(request: NextRequest) {
                         request,
                     })
                     cookiesToSet.forEach(({ name, value, options }) => {
-                        // Remove maxAge and expires to make it a session cookie
-                        const { maxAge, expires, ...rest } = options || {}
-                        supabaseResponse.cookies.set(name, value, rest)
+                        // [CRITICAL FIX] If maxAge is 0, it means Supabase is trying to DELETE the cookie.
+                        // We must let it through, otherwise logout won't work.
+                        if (options?.maxAge === 0) {
+                            supabaseResponse.cookies.set(name, value, options)
+                        } else {
+                            // For regular sets, strip maxAge/expires to make it a session cookie (Absolute Security).
+                            const { maxAge, expires, ...rest } = options || {}
+                            supabaseResponse.cookies.set(name, value, rest)
+                        }
                     })
                 },
             },
@@ -30,8 +36,6 @@ export async function updateSession(request: NextRequest) {
     )
 
     // --- [Expert Security] Ultimate Heartbeat Guard ---
-    // Chrome's "Continue where you left off" can restore session cookies.
-    // We use a short-lived 'session_presence' Heartbeat cookie to detect closure.
     const hasPresenceSignal = request.cookies.has('session_presence')
     const hasAuthCookies = request.cookies.getAll().some(c => c.name.startsWith('sb-'))
 
@@ -41,7 +45,6 @@ export async function updateSession(request: NextRequest) {
     if (hasAuthCookies && !hasPresenceSignal && !isAuthPage) {
         console.log('🚨 Guard: Zombie session detected via Heartbeat failure. Purging...')
         const response = NextResponse.redirect(new URL('/login', request.url))
-        // Physically delete all auth cookies from the response to force logout
         request.cookies.getAll().forEach(cookie => {
             if (cookie.name.startsWith('sb-')) {
                 response.cookies.delete(cookie.name)
@@ -50,7 +53,7 @@ export async function updateSession(request: NextRequest) {
         return response
     }
 
-    // 중요: 상호 검증(auth.getUser())을 통해 세션을 실시간으로 갱신합니다.
+    // 세션 실시간 갱신
     const {
         data: { user },
     } = await supabase.auth.getUser()
