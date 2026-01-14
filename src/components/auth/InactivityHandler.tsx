@@ -37,8 +37,9 @@ export function InactivityHandler() {
         // --- [Expert Security] Ultimate Heartbeat Presence Signal ---
         const updatePresence = () => {
             // Set a short-lived presence cookie (25 seconds)
-            // This acts as a 'Proof of Life' for the current tab.
             document.cookie = `session_presence=active; path=/; max-age=25; samesite=lax`
+            // Update timestamp in storage for "Stale Restore" detection
+            sessionStorage.setItem('last_active_timestamp', Date.now().toString())
         }
 
         // Initial update
@@ -56,26 +57,35 @@ export function InactivityHandler() {
                 }
             })
 
-            // 2. Check for Session Storage Flag (Tab Session)
+            // 2. Tab Session Validation (Timestamp Check)
+            const lastActiveTime = sessionStorage.getItem('last_active_timestamp')
+            const currentTime = Date.now()
+
+            // If we have a stored timestamp, check if it's "stale" (e.g., > 1 minute old)
+            // This detects if Chrome "restored" the session storage from a long time ago.
+            const isStale = lastActiveTime && (currentTime - parseInt(lastActiveTime) > 60000)
+
+            // logic:
+            // 1. If NO lastActiveTime (Fresh Tab) -> Logout (unless first login)
+            // 2. If isStale (Restored Stale Session) -> Logout
+
+            // We need to differentiate "First Login" from "Refresh".
+            // 'app-tab-active' is simpler. Let's combine.
             const isTabActive = sessionStorage.getItem('app-tab-active')
 
-            if (!isTabActive) {
-                // Fresh tab session detected.
-                // We check if we already have a server-side user.
+            if (!isTabActive || isStale) {
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
-                    console.log('🛡️ Security: Purging persistent ghost session...')
+                    console.log('🛡️ Security: Purging stale/ghost session (Reason: ' + (isStale ? 'Stale' : 'New Tab') + ')...')
                     await supabase.auth.signOut()
-                    // Clear presence signal immediately on logout
                     document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
-                    sessionStorage.setItem('app-tab-active', 'true')
+                    sessionStorage.clear() // Clear all storage
+                    sessionStorage.setItem('app-tab-active', 'true') // Reset for next login
                     router.refresh()
                     router.push('/login')
                     return
                 }
-
-                // If no user, just mark the tab as active
                 sessionStorage.setItem('app-tab-active', 'true')
             }
 
