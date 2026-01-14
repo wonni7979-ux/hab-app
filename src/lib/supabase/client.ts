@@ -6,8 +6,9 @@ export function createClient() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             auth: {
-                persistSession: true,
-                storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+                persistSession: false, // Don't persist in storage, rely on cookies
+                autoRefreshToken: true,
+                detectSessionInUrl: true
             }
         }
     )
