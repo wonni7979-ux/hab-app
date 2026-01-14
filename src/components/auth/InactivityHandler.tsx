@@ -41,12 +41,12 @@ export function InactivityHandler() {
 
             // If the flag is missing, it means this is a fresh window/tab.
             if (!isSessionActive) {
-                // If we detect a session persisting in cookies/localStore despite being a new tab,
+                // If we detect a user persisting in cookies despite being a new tab,
                 // we force an immediate sign out to ensure the "logout on close" behavior.
-                const { data: { session } } = await supabase.auth.getSession()
+                const { data: { user } } = await supabase.auth.getUser()
 
-                if (session) {
-                    console.log('Detected stale session in fresh tab. Forcing sign out for security.')
+                if (user) {
+                    console.log('🛡️ Security: Ghost session detected in fresh tab. Purging credentials...')
                     await supabase.auth.signOut()
                     // Set flag AFTER sign out to prevent infinite loop
                     sessionStorage.setItem('sb-session-active', 'checked')
