@@ -34,10 +34,22 @@ export function InactivityHandler() {
     }
 
     useEffect(() => {
+        // --- [Expert Security] Ultimate Heartbeat Presence Signal ---
+        const updatePresence = () => {
+            // Set a short-lived presence cookie (25 seconds)
+            // This acts as a 'Proof of Life' for the current tab.
+            document.cookie = `session_presence=active; path=/; max-age=25; samesite=lax`
+        }
+
+        // Initial update
+        updatePresence()
+
+        // Update presence every 10 seconds
+        const presenceInterval = setInterval(updatePresence, 10000)
+
         // --- [Expert Security] Strict Session & Storage Cleanup ---
         const initSecurity = async () => {
             // 1. Aggressively clear any leftover Supabase storage (LocalStorage)
-            // This prevents old tokens from being used for re-hydration.
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('sb-')) {
                     localStorage.removeItem(key)
@@ -53,10 +65,10 @@ export function InactivityHandler() {
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
-                    console.log('🛡️ Security: Purging ghost session...')
+                    console.log('🛡️ Security: Purging persistent ghost session...')
                     await supabase.auth.signOut()
-                    // Clear the guard cookie manually just in case
-                    document.cookie = 'app_session_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
+                    // Clear presence signal immediately on logout
+                    document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
                     sessionStorage.setItem('app-tab-active', 'true')
                     router.refresh()
                     router.push('/login')
@@ -68,8 +80,6 @@ export function InactivityHandler() {
             }
 
             // 3. Set/Update the 'app_session_active' guard cookie (Session-only)
-            // This cookie has NO maxAge, so it *should* die when browser closes,
-            // but if it survives (Chrome recovery), the sessionStorage check above will catch it.
             document.cookie = 'app_session_active=1; path=/; samesite=lax'
         }
 
@@ -92,6 +102,7 @@ export function InactivityHandler() {
 
         // Cleanup
         return () => {
+            clearInterval(presenceInterval)
             if (timerRef.current) {
                 clearTimeout(timerRef.current)
             }
