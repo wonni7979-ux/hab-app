@@ -133,9 +133,14 @@ export default function PaymentMethodManagementPage() {
                     </Link>
                     <h1 className="text-xl font-bold text-white">결제 수단 관리</h1>
                 </div>
-                <button className="text-slate-400 p-1">
-                    <Search size={22} />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={handleAdd} className="text-primary p-2 hover:bg-primary/10 rounded-full transition-colors">
+                        <Plus size={24} />
+                    </button>
+                    <button className="text-slate-400 p-2">
+                        <Search size={22} />
+                    </button>
+                </div>
             </header>
 
             <div className="px-6 space-y-6">
@@ -199,13 +204,6 @@ export default function PaymentMethodManagementPage() {
                 </div>
             </div>
 
-            {/* Float Action Button */}
-            <button
-                onClick={handleAdd}
-                className="fixed bottom-28 right-6 h-14 w-14 rounded-full bg-primary text-white shadow-[0_8px_25px_rgba(29,161,242,0.4)] flex items-center justify-center active:scale-90 transition-all z-50 hover:bg-primary/90"
-            >
-                <Plus size={28} />
-            </button>
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

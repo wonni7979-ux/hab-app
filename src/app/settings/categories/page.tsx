@@ -154,6 +154,9 @@ export default function CategoryManagementPage() {
                     </Link>
                     <h1 className="text-xl font-bold text-white">카테고리 관리</h1>
                 </div>
+                <button onClick={handleAdd} className="text-primary p-2 hover:bg-primary/10 rounded-full transition-colors">
+                    <Plus size={24} />
+                </button>
             </header>
 
             <Tabs defaultValue="expense" onValueChange={(v) => setType(v as any)} className="w-full px-6">
@@ -200,13 +203,6 @@ export default function CategoryManagementPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Float Action Button */}
-            <button
-                onClick={handleAdd}
-                className="fixed bottom-28 right-6 h-14 w-14 rounded-full bg-primary text-white shadow-[0_8px_25px_rgba(29,161,242,0.4)] flex items-center justify-center active:scale-90 transition-all z-50 hover:bg-primary/90"
-            >
-                <Plus size={28} />
-            </button>
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
