@@ -34,21 +34,29 @@ export function InactivityHandler() {
     }
 
     useEffect(() => {
-        // --- Session Sync Logic (Anti-Recompute) ---
+        // --- Strict Session Sync Logic (Anti-Zombie Session) ---
         const checkSessionSync = async () => {
-            // Check if this is a fresh window session
+            // Check if this specific tab/window has an active session flag
             const isSessionActive = sessionStorage.getItem('sb-session-active')
 
+            // If the flag is missing, it means this is a fresh window/tab.
             if (!isSessionActive) {
-                // This is a new window/tab session. 
-                // Ensure we are truly logged out if cookies persisted.
+                // If we detect a session persisting in cookies/localStore despite being a new tab,
+                // we force an immediate sign out to ensure the "logout on close" behavior.
                 const { data: { session } } = await supabase.auth.getSession()
+
                 if (session) {
+                    console.log('Detected stale session in fresh tab. Forcing sign out for security.')
                     await supabase.auth.signOut()
+                    // Set flag AFTER sign out to prevent infinite loop
+                    sessionStorage.setItem('sb-session-active', 'checked')
                     router.refresh()
+                    router.push('/login')
+                    return
                 }
-                // Mark this specific window session as active
-                sessionStorage.setItem('sb-session-active', 'true')
+
+                // Mark this specific window session as active/checked even if no session was found
+                sessionStorage.setItem('sb-session-active', 'checked')
             }
         }
 
