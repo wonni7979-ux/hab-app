@@ -40,7 +40,7 @@ export default function PaymentMethodManagementPage() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('payment_methods')
-                .select('id, name, user_id')
+                .select('*')
                 .order('name')
             if (error) throw error
             return data as PaymentMethod[]
@@ -58,9 +58,11 @@ export default function PaymentMethodManagementPage() {
             }
 
             if (method.id) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, ...updateData } = payload
                 const { error } = await supabase
                     .from('payment_methods')
-                    .update(payload)
+                    .update(updateData)
                     .eq('id', method.id)
                 if (error) throw error
             } else {
