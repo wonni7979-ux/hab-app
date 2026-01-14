@@ -29,18 +29,19 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    // --- [Expert Security] Strict Session Guard ---
+    // --- [Expert Security] Ultimate Heartbeat Guard ---
     // Chrome's "Continue where you left off" can restore session cookies.
-    // We check for a specific 'app_session_active' guard cookie.
-    const isSessionActive = request.cookies.get('app_session_active')
-    const hasAuthCookie = request.cookies.getAll().some(c => c.name.startsWith('sb-'))
+    // We use a short-lived 'session_presence' Heartbeat cookie to detect closure.
+    const hasPresenceSignal = request.cookies.has('session_presence')
+    const hasAuthCookies = request.cookies.getAll().some(c => c.name.startsWith('sb-'))
 
-    // If we have auth cookies but NO guard cookie, it means the browser process was restarted.
-    // We MUST purge the auth cookies to enforce security.
-    if (!isSessionActive && hasAuthCookie && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
-        console.log('🛡️ Guard: Stale session detected. Purging auth cookies...')
+    const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth')
+
+    // If auth cookies exist but Heartbeat is MISSIONG on a protected route, it's a zombie session.
+    if (hasAuthCookies && !hasPresenceSignal && !isAuthPage) {
+        console.log('🚨 Guard: Zombie session detected via Heartbeat failure. Purging...')
         const response = NextResponse.redirect(new URL('/login', request.url))
-        // Delete all supabase related cookies
+        // Physically delete all auth cookies from the response to force logout
         request.cookies.getAll().forEach(cookie => {
             if (cookie.name.startsWith('sb-')) {
                 response.cookies.delete(cookie.name)
@@ -54,11 +55,7 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth')
-    ) {
+    if (!user && !isAuthPage) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)
