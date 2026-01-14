@@ -12,9 +12,17 @@ export default function SettingsPage() {
     const router = useRouter()
 
     const handleLogout = async () => {
+        // 1. Supabase SignOut
         await supabase.auth.signOut()
+
+        // 2. Explicitly clear security markers
+        sessionStorage.clear()
+        document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
+
         toast.success('로그아웃 되었습니다.')
-        router.push('/login')
+
+        // 3. Force a hard refresh to login to clear all memory states
+        window.location.href = '/login'
     }
 
     const menuItems = [

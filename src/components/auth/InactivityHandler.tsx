@@ -11,15 +11,16 @@ export function InactivityHandler() {
     const router = useRouter()
     const supabase = createClient()
     const timerRef = useRef<NodeJS.Timeout | null>(null)
-    // [Expert Security] Shield the UI until verification is complete
     const [isChecking, setIsChecking] = useState(true)
 
     const handleLogout = async () => {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
             await supabase.auth.signOut()
+            sessionStorage.clear()
+            document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
             toast.info('장시간 미사용으로 로그아웃되었습니다.', { duration: 5000, icon: '🔐' })
-            router.push('/login')
+            window.location.href = '/login'
         }
     }
 
@@ -36,17 +37,17 @@ export function InactivityHandler() {
             })
         }
 
-        // 2. Heartbeat Updater
+        // 2. Heartbeat Updater (Hyper-Short TTL: 5s)
         const updatePresence = () => {
             sessionStorage.setItem('last_active_timestamp', Date.now().toString())
-            document.cookie = `session_presence=active; path=/; max-age=10; samesite=lax`
+            // CRITICAL: Max-age is 5s. If user is gone for 5s, they are logged out.
+            document.cookie = `session_presence=active; path=/; max-age=5; samesite=lax`
         }
         updatePresence()
         const presenceInterval = setInterval(updatePresence, 2000)
 
-        // 3. Boot Validation (The Core Logic)
+        // 3. Boot Validation
         const initSecurity = async () => {
-            // Clear legacy local storage
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('sb-')) localStorage.removeItem(key)
             })
@@ -54,67 +55,48 @@ export function InactivityHandler() {
             const lastActiveTime = sessionStorage.getItem('last_active_timestamp')
             const currentTime = Date.now()
 
-            // Navigation Timing Check
             let isReload = false
             if (typeof performance !== 'undefined') {
                 const navEntry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming
-                if (navEntry && navEntry.type === 'reload') {
-                    isReload = true
-                }
+                if (navEntry && navEntry.type === 'reload') isReload = true
             }
 
-            // Stale Threshold Logic
-            // Reload: 30s allowance
-            // Restore/Navigate: 3s Strict allowance
-            const threshold = isReload ? 30000 : 3000
+            // Stale Threshold: 5 seconds (Strict)
+            // Even on reload, we only allow 5 seconds gap for the heart to stay alive.
+            const threshold = isReload ? 10000 : 3000
 
             const timeGap = lastActiveTime ? currentTime - parseInt(lastActiveTime) : 0
             const isStale = lastActiveTime && (timeGap > threshold)
             const isTabActive = sessionStorage.getItem('app-tab-active')
 
-            // Log for debugging (will show in Verify stage if needed)
-            // console.log(`Security Check: Gap=${timeGap}ms, Threshold=${threshold}ms, Reload=${isReload}, Stale=${isStale}`)
-
-            // Detect Zombie Session
-            // a) No 'app-tab-active' flag (Fresh tab trying to reuse cookies)
-            // b) 'app-tab-active' exists but timestamp is too old (Restored tab)
             if (!isTabActive || isStale) {
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
-                    console.log(`🛡️ Security: Blocking access. Reason: ${isStale ? 'Stale Session' : 'Fresh Tab'}`)
-
-                    // Force Logout
+                    console.log(`🛡️ Security: Blocking access. Reason: ${isStale ? 'Stale' : 'First Access'}`)
                     await supabase.auth.signOut()
                     document.cookie = 'session_presence=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
                     sessionStorage.clear()
-
-                    // Mark as active for the NEXT login
                     sessionStorage.setItem('app-tab-active', 'true')
-
-                    router.replace('/login')
-                    // Keep isChecking = true to hide UI
+                    window.location.href = '/login'
                     return
                 }
-                // No user, just mark tab as active
                 sessionStorage.setItem('app-tab-active', 'true')
             }
 
-            // Passed all checks
             setIsChecking(false)
         }
 
         initSecurity()
 
-        // 4. Inactivity Timer
         resetTimer()
         const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove']
         const handleActivity = () => resetTimer()
         events.forEach(e => window.addEventListener(e, handleActivity))
 
-        // 5. Before Unload
         const handleUnload = () => {
-            sessionStorage.removeItem('app-tab-active')
+            // We don't clear here because we want F5/Navigate to work.
+            // But we dirty the timestamp so the 3s/5s check works on reopen.
         }
         window.addEventListener('beforeunload', handleUnload)
 
@@ -127,13 +109,12 @@ export function InactivityHandler() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // --- The Security Curtain ---
     if (isChecking) {
         return (
-            <div className="fixed inset-0 z-[99999] bg-background flex items-center justify-center">
+            <div className="fixed inset-0 z-[99999] bg-slate-950 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="text-muted-foreground text-sm font-medium">보안 확인 중...</p>
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
+                    <p className="text-slate-400 text-sm font-medium tracking-tight">안전한 세션 연결 중...</p>
                 </div>
             </div>
         )
