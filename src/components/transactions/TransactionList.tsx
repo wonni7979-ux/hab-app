@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { ArrowUpCircle, ArrowDownCircle, Trash2, Calendar, Wallet } from 'lucide-react'
+import { Wallet, Trash2, Search, Filter, Calendar as CalendarIcon, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -124,6 +124,32 @@ export function TransactionList({
         },
     })
 
+    const saveTemplateMutation = useMutation({
+        mutationFn: async (t: Transaction) => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('Auth required')
+
+            const { error } = await supabase.from('transaction_templates').insert({
+                user_id: user.id,
+                name: t.description || (t.type === 'transfer' ? '자산 이동' : t.categories?.name),
+                type: t.type,
+                amount: t.amount,
+                category_id: t.category_id,
+                payment_method_id: t.payment_method_id,
+                to_payment_method_id: t.to_payment_method_id,
+                description: t.description
+            })
+            if (error) throw error
+        },
+        onSuccess: () => {
+            toast.success('템플릿으로 저장되었습니다!')
+            queryClient.invalidateQueries({ queryKey: ['transaction-templates'] })
+        },
+        onError: (err: any) => {
+            toast.error('오류가 발생했습니다: ' + err.message)
+        }
+    })
+
     if (isLoading) return (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-10 h-10 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
@@ -228,19 +254,33 @@ export function TransactionList({
                                         </div>
                                     </div>
 
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="opacity-0 group-hover:opacity-100 h-10 w-10 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            if (confirm('이 내역을 삭제하시겠습니까?')) {
-                                                deleteMutation.mutate(t.id)
-                                            }
-                                        }}
-                                    >
-                                        <Trash2 size={18} />
-                                    </Button>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-10 w-10 text-slate-600 hover:text-yellow-500 hover:bg-yellow-500/10 rounded-xl transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                saveTemplateMutation.mutate(t)
+                                            }}
+                                            title="템플릿으로 저장"
+                                        >
+                                            <Zap size={18} />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-10 w-10 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                if (confirm('이 내역을 삭제하시겠습니까?')) {
+                                                    deleteMutation.mutate(t.id)
+                                                }
+                                            }}
+                                        >
+                                            <Trash2 size={18} />
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

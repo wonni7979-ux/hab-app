@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useForm, FieldValues } from 'react-hook-form'
 import { format } from 'date-fns'
-import { Calendar as CalendarIcon } from 'lucide-react'
+import { Calendar as CalendarIcon, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -32,7 +32,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCategories, usePaymentMethods } from '@/hooks/useMetaData'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
@@ -111,6 +111,31 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
         }
     }
 
+    const { data: templates } = useQuery({
+        queryKey: ['transaction-templates'],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return []
+            const { data } = await supabase
+                .from('transaction_templates')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+            return data || []
+        }
+    })
+
+    const applyTemplate = (template: any) => {
+        setType(template.type)
+        form.setValue('type', template.type)
+        form.setValue('amount', template.amount.toString())
+        form.setValue('description', template.description || template.name)
+        form.setValue('category_id', template.category_id || '')
+        form.setValue('payment_method_id', template.payment_method_id || '')
+        form.setValue('to_payment_method_id', template.to_payment_method_id || '')
+        toast.info(`${template.name} 템플릿이 적용되었습니다.`)
+    }
+
     const filteredCategories = categories?.filter((c) => c.type === type)
 
     return (
@@ -126,6 +151,38 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
                         <TabsTrigger value="transfer" className="data-[state=active]:bg-slate-600">이동</TabsTrigger>
                     </TabsList>
                 </Tabs>
+
+                {templates && templates.length > 0 && (
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                            <Zap size={14} className="text-yellow-400" />
+                            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">빠른 입력 템플릿</span>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
+                            {templates.map((t: any) => (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => applyTemplate(t)}
+                                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-slate-800/50 hover:bg-primary/20 border border-white/5 rounded-2xl transition-all active:scale-95 group"
+                                >
+                                    <span className="text-lg group-hover:scale-110 transition-transform">
+                                        {t.type === 'transfer' ? '🔄' : (categories?.find(c => c.id === t.category_id)?.icon || '📦')}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-200">{t.name}</span>
+                                </button>
+                            ))}
+                            <Link href="/settings/templates">
+                                <button
+                                    type="button"
+                                    className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-slate-800/30 border border-dashed border-white/10 rounded-2xl text-slate-500 hover:text-white hover:border-white/20 transition-all"
+                                >
+                                    <Plus size={18} />
+                                </button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex gap-4">
                     <FormField

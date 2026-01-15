@@ -28,6 +28,7 @@ export default function SettingsPage() {
         { icon: Tags, label: '카테고리 관리', href: '/settings/categories', color: 'text-blue-400' },
         { icon: CreditCard, label: '결제 수단 관리', href: '/settings/payment-methods', color: 'text-emerald-400' },
         { icon: PiggyBank, label: '예산 관리', href: '/settings/budgets', color: 'text-rose-400' },
+        { icon: Zap, label: '반복 거래 관리', href: '/settings/templates', color: 'text-yellow-400' },
         { icon: Bell, label: '알림 설정', href: '/settings/notifications', color: 'text-amber-400' },
         { icon: User, label: '프로필 수정', href: '/settings/profile', color: 'text-slate-400' },
     ]
