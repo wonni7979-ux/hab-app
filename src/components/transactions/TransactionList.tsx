@@ -22,43 +22,77 @@ interface PaymentMethod {
 interface Transaction {
     id: string
     date: string
-    type: 'expense' | 'income'
+    type: 'expense' | 'income' | 'transfer'
     amount: number
     description: string | null
-    category_id: string
+    category_id: string | null
     payment_method_id: string
+    to_payment_method_id: string | null
     categories: Category | null
-    payment_methods: PaymentMethod | null
+    payment_methods: { name: string } | null
+    to_payment_methods?: { name: string } | null
 }
 
 interface TransactionListProps {
     selectedMonth?: Date
+    searchQuery?: string
+    filterPeriod?: '1month' | '3months' | '6months' | '1year' | 'all'
+    filterCategory?: string
 }
 
-export function TransactionList({ selectedMonth = new Date() }: TransactionListProps) {
+export function TransactionList({
+    selectedMonth = new Date(),
+    searchQuery = '',
+    filterPeriod = '1month',
+    filterCategory = ''
+}: TransactionListProps) {
     const supabase = createClient()
     const queryClient = useQueryClient()
 
     const { data: transactions, isLoading } = useQuery({
-        queryKey: ['transactions', format(selectedMonth, 'yyyy-MM')],
+        queryKey: ['transactions', format(selectedMonth, 'yyyy-MM'), searchQuery, filterPeriod, filterCategory],
         queryFn: async () => {
-            const start = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1), 'yyyy-MM-dd')
-            const end = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0), 'yyyy-MM-dd')
-
-            const { data, error } = await supabase
+            let query = supabase
                 .from('transactions')
                 .select(`
                     *,
                     categories(name, icon, color),
-                    payment_methods(name)
+                    payment_methods(name),
+                    to_payment_methods:to_payment_method_id(name)
                 `)
-                .gte('date', start)
-                .lte('date', end)
+
+            // Handle period filtering
+            if (filterPeriod !== '1month') {
+                const now = new Date()
+                let startDate = new Date()
+                if (filterPeriod === '3months') startDate.setMonth(now.getMonth() - 3)
+                else if (filterPeriod === '6months') startDate.setMonth(now.getMonth() - 6)
+                else if (filterPeriod === '1year') startDate.setFullYear(now.getFullYear() - 1)
+                else if (filterPeriod === 'all') startDate = new Date(1900, 0, 1)
+
+                query = query.gte('date', format(startDate, 'yyyy-MM-dd'))
+            } else {
+                const start = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1), 'yyyy-MM-dd')
+                const end = format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0), 'yyyy-MM-dd')
+                query = query.gte('date', start).lte('date', end)
+            }
+
+            // Handle search
+            if (searchQuery) {
+                query = query.or(`description.ilike.%${searchQuery}%,categories.name.ilike.%${searchQuery}%`)
+            }
+
+            // Handle category filter
+            if (filterCategory) {
+                query = query.eq('category_id', filterCategory)
+            }
+
+            const { data, error } = await query
                 .order('date', { ascending: false })
                 .order('created_at', { ascending: false })
 
             if (error) throw error
-            return data as Transaction[]
+            return data as any[]
         },
     })
 
@@ -108,8 +142,8 @@ export function TransactionList({ selectedMonth = new Date() }: TransactionListP
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
             {Object.keys(grouped).sort((a, b) => b.localeCompare(a)).map((date) => {
                 const dayTransactions = grouped[date]
-                const dayExpense = dayTransactions.reduce((sum, t) => t.type === 'expense' ? sum + t.amount : sum, 0)
-                const dayIncome = dayTransactions.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum, 0)
+                const dayExpense = dayTransactions.reduce((sum: number, t: Transaction) => t.type === 'expense' ? sum + t.amount : sum, 0)
+                const dayIncome = dayTransactions.reduce((sum: number, t: Transaction) => t.type === 'income' ? sum + t.amount : sum, 0)
 
                 return (
                     <div key={date} className="space-y-4">
@@ -139,30 +173,43 @@ export function TransactionList({ selectedMonth = new Date() }: TransactionListP
 
                                     <div
                                         className="flex items-center justify-center h-12 w-12 rounded-2xl shrink-0 shadow-inner group-hover:scale-105 transition-transform"
-                                        style={{ backgroundColor: `${t.categories?.color}15`, color: t.categories?.color }}
+                                        style={{
+                                            backgroundColor: t.type === 'transfer' ? '#47556915' : `${t.categories?.color}15`,
+                                            color: t.type === 'transfer' ? '#94a3b8' : t.categories?.color
+                                        }}
                                     >
-                                        <span className="text-xl">{t.categories?.icon || '📦'}</span>
+                                        <span className="text-xl">
+                                            {t.type === 'transfer' ? '🔄' : (t.categories?.icon || '📦')}
+                                        </span>
                                     </div>
 
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center mb-0.5">
                                             <p className="text-[15px] font-black text-white truncate pr-2">
-                                                {t.description || t.categories?.name}
+                                                {t.type === 'transfer' ? '자산 이동' : (t.description || t.categories?.name)}
                                             </p>
                                             <p className={cn(
                                                 "text-[15px] font-black shrink-0",
-                                                t.type === 'expense' ? "text-white" : "text-emerald-400"
+                                                t.type === 'expense' ? "text-white" : t.type === 'income' ? "text-emerald-400" : "text-slate-400"
                                             )}>
-                                                {t.type === 'expense' ? '-' : '+'}{t.amount.toLocaleString()}원
+                                                {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}{t.amount.toLocaleString()}원
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2.5">
                                             <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
                                                 <Wallet size={10} />
-                                                <span>{t.payment_methods?.name || '현금'}</span>
+                                                <span>
+                                                    {t.type === 'transfer'
+                                                        ? `${t.payment_methods?.name} → ${t.to_payment_methods?.name}`
+                                                        : (t.payment_methods?.name || '현금')}
+                                                </span>
                                             </div>
-                                            <div className="w-1 h-1 rounded-full bg-slate-700" />
-                                            <span className="text-[11px] font-bold text-slate-500">{t.categories?.name}</span>
+                                            {t.type !== 'transfer' && (
+                                                <>
+                                                    <div className="w-1 h-1 rounded-full bg-slate-700" />
+                                                    <span className="text-[11px] font-bold text-slate-500">{t.categories?.name}</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 

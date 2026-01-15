@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 interface PaymentMethod {
     id: string
     name: string
+    initial_balance: number
     user_id?: string
 }
 
@@ -34,6 +35,7 @@ export default function PaymentMethodManagementPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingMethod, setEditingMethod] = useState<Partial<PaymentMethod> | null>(null)
     const [name, setName] = useState('')
+    const [initialBalance, setInitialBalance] = useState('0')
 
     const { data: methods, isLoading } = useQuery({
         queryKey: ['payment_methods'],
@@ -70,6 +72,7 @@ export default function PaymentMethodManagementPage() {
                 // INSERT: Strip id entirely to avoid PostgREST parsing 'id: undefined' as a column
                 const insertData = {
                     name: payload.name,
+                    initial_balance: payload.initial_balance || 0,
                     user_id: payload.user_id
                 }
                 const { error } = await supabase
@@ -106,11 +109,13 @@ export default function PaymentMethodManagementPage() {
     const resetForm = () => {
         setEditingMethod(null)
         setName('')
+        setInitialBalance('0')
     }
 
     const handleEdit = (m: PaymentMethod) => {
         setEditingMethod(m)
         setName(m.name)
+        setInitialBalance(m.initial_balance?.toString() || '0')
         setIsDialogOpen(true)
     }
 
@@ -127,7 +132,8 @@ export default function PaymentMethodManagementPage() {
         }
         upsertMutation.mutate({
             id: editingMethod?.id,
-            name
+            name,
+            initial_balance: parseInt(initialBalance.replace(/[^0-9]/g, '')) || 0
         })
     }
 
@@ -164,7 +170,12 @@ export default function PaymentMethodManagementPage() {
                                         {m.name.includes('카드') ? <CreditCard size={24} /> : m.name.includes('통장') ? <Landmark size={24} /> : <Wallet size={24} />}
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[15px] font-bold text-white leading-tight">{m.name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-[15px] font-bold text-white leading-tight">{m.name}</p>
+                                            <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
+                                                ₩{m.initial_balance?.toLocaleString()}
+                                            </span>
+                                        </div>
                                         <p className="text-xs font-medium text-slate-500">
                                             {m.name.includes('카드') ? '신용카드' : m.name.includes('통장') ? '계좌 • • • • 1234' : '현금'}
                                         </p>
@@ -237,6 +248,22 @@ export default function PaymentMethodManagementPage() {
                                     className="bg-slate-800 border-white/5 text-white h-12 rounded-xl focus:border-primary/50"
                                     required
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">초기 잔액 (원)</Label>
+                                <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={initialBalance}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/[^0-9]/g, '')
+                                        setInitialBalance(val)
+                                    }}
+                                    placeholder="0"
+                                    className="bg-slate-800 border-white/5 text-white h-12 rounded-xl focus:border-primary/50"
+                                />
+                                <p className="text-[10px] text-slate-500 px-1 italic">자산 현항 계산의 기준이 되는 현재 잔액을 입력해 주세요.</p>
                             </div>
                         </div>
 
