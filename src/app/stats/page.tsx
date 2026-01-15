@@ -61,6 +61,9 @@ export default function StatsPage() {
     const { data: stats, isLoading } = useQuery({
         queryKey: ['stats', monthStr],
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return null
+
             const start = format(startOfMonth(selectedDate), 'yyyy-MM-dd')
             const end = format(endOfMonth(selectedDate), 'yyyy-MM-dd')
 
@@ -70,6 +73,7 @@ export default function StatsPage() {
                     *,
                     categories(name, color, icon)
                 `)
+                .eq('user_id', user.id)
                 .gte('date', start)
                 .lte('date', end)
 

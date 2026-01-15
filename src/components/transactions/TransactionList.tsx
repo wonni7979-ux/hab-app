@@ -65,8 +65,8 @@ export function TransactionList({
                 .select(`
                     *,
                     categories(name, icon, color),
-                    payment_methods(name),
-                    to_payment_methods:to_payment_method_id(name)
+                    payment_methods!payment_method_id(name),
+                    to_payment_methods:payment_methods!to_payment_method_id(name)
                 `)
                 .eq('user_id', user.id)
 

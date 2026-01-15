@@ -49,7 +49,8 @@ export default function TemplatesPage() {
                 .select(`
                     *,
                     categories(name, icon, color),
-                    payment_methods(name)
+                    payment_methods!payment_method_id(name),
+                    to_payment_methods:payment_methods!to_payment_method_id(name)
                 `)
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })

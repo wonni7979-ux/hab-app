@@ -75,9 +75,13 @@ export default function BudgetManagementPage() {
             const start = startOfMonth(selectedDate).toISOString()
             const end = endOfMonth(selectedDate).toISOString()
 
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return null
+
             const { data, error } = await supabase
                 .from('transactions')
                 .select('amount, type, category_id, categories(name, icon, color)')
+                .eq('user_id', user.id)
                 .eq('type', 'expense')
                 .gte('date', start)
                 .lte('date', end)

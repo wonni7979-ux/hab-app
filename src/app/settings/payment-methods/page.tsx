@@ -40,9 +40,13 @@ export default function PaymentMethodManagementPage() {
     const { data: methods, isLoading } = useQuery({
         queryKey: ['payment_methods'],
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return []
+
             const { data, error } = await supabase
                 .from('payment_methods')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('name')
             if (error) throw error
             return data as PaymentMethod[]
@@ -93,7 +97,14 @@ export default function PaymentMethodManagementPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase.from('payment_methods').delete().eq('id', id)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('로그인이 필요합니다.')
+
+            const { error } = await supabase
+                .from('payment_methods')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', user.id)
             if (error) throw error
         },
         onSuccess: () => {

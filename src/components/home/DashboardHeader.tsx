@@ -16,8 +16,15 @@ export function DashboardHeader() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return 0
 
-            const { data: methods } = await supabase.from('payment_methods').select('initial_balance')
-            const { data: txs } = await supabase.from('transactions').select('type, amount')
+            const { data: methods } = await supabase
+                .from('payment_methods')
+                .select('initial_balance')
+                .eq('user_id', user.id)
+
+            const { data: txs } = await supabase
+                .from('transactions')
+                .select('type, amount')
+                .eq('user_id', user.id)
 
             const initial = (methods || []).reduce((acc, m) => acc + Number(m.initial_balance || 0), 0)
             const transactions = (txs || []).reduce((acc, t) => {
