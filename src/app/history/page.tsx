@@ -22,9 +22,13 @@ export default function HistoryPage() {
     const { data: monthSummary } = useQuery({
         queryKey: ['month-summary', monthStr, filterPeriod],
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return { income: 0, expense: 0 }
+
             let query = supabase
                 .from('transactions')
                 .select('amount, type, date')
+                .eq('user_id', user.id)
 
             if (filterPeriod !== '1month') {
                 const now = new Date()

@@ -95,9 +95,9 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
             type: type,
             amount: Number(values.amount),
             description: values.description || (type === 'transfer' ? '자산 이동' : ''),
-            category_id: type === 'transfer' ? null : values.category_id,
+            category_id: type === 'transfer' ? null : (values.category_id || null),
             payment_method_id: values.payment_method_id,
-            to_payment_method_id: type === 'transfer' ? values.to_payment_method_id : null,
+            to_payment_method_id: type === 'transfer' ? (values.to_payment_method_id || null) : null,
             date: format(values.date, 'yyyy-MM-dd'),
         })
 

@@ -52,6 +52,9 @@ export function TransactionList({
     const { data: transactions, isLoading } = useQuery({
         queryKey: ['transactions', format(selectedMonth, 'yyyy-MM'), searchQuery, filterPeriod, filterCategory],
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return []
+
             let query = supabase
                 .from('transactions')
                 .select(`
@@ -60,6 +63,7 @@ export function TransactionList({
                     payment_methods(name),
                     to_payment_methods:to_payment_method_id(name)
                 `)
+                .eq('user_id', user.id)
 
             // Handle period filtering
             if (filterPeriod !== '1month') {
@@ -91,7 +95,10 @@ export function TransactionList({
                 .order('date', { ascending: false })
                 .order('created_at', { ascending: false })
 
-            if (error) throw error
+            if (error) {
+                console.error('Transactions fetch error:', error)
+                throw error
+            }
             return data as any[]
         },
     })
