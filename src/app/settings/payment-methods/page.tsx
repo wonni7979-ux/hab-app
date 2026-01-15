@@ -140,10 +140,12 @@ export default function PaymentMethodManagementPage() {
             toast.error('이름을 입력해 주세요.')
             return
         }
+        const amountStr = initialBalance.replace(/(?!^-)[^0-9]/g, '')
+        const amount = parseInt(amountStr) || 0
         upsertMutation.mutate({
             id: editingMethod?.id,
             name,
-            initial_balance: parseInt(initialBalance.replace(/[^0-9]/g, '')) || 0
+            initial_balance: amount
         })
     }
 
@@ -267,7 +269,8 @@ export default function PaymentMethodManagementPage() {
                                     inputMode="numeric"
                                     value={initialBalance}
                                     onChange={(e) => {
-                                        const val = e.target.value.replace(/[^0-9]/g, '')
+                                        // Allow only digits and a single leading minus
+                                        const val = e.target.value.replace(/(?!^-)[^0-9]/g, '')
                                         setInitialBalance(val)
                                     }}
                                     placeholder="0"
