@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 interface Profile {
     id: string
@@ -100,7 +101,14 @@ export default function ProfileEditPage() {
                     <div className="relative group">
                         <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-white/10 overflow-hidden flex items-center justify-center">
                             {avatarUrl ? (
-                                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                <Image
+                                    src={avatarUrl}
+                                    alt="Avatar"
+                                    width={96}
+                                    height={96}
+                                    className="w-full h-full object-cover"
+                                    unoptimized
+                                />
                             ) : (
                                 <User size={40} className="text-slate-600" />
                             )}

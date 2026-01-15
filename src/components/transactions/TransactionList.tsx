@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { Wallet, Trash2, Search, Filter, Calendar as CalendarIcon, Zap } from 'lucide-react'
+import { Wallet, Trash2, Search, Filter, Calendar as CalendarIcon, Zap, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'

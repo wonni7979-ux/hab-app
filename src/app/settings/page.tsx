@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, ChevronRight, Tags, CreditCard, PiggyBank, Bell, User, LogOut } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Tags, CreditCard, PiggyBank, Zap, Bell, User, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
