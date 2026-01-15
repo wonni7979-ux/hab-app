@@ -19,7 +19,7 @@ export default function HistoryPage() {
     const [isFilterOpen, setIsFilterOpen] = useState(false)
     const monthStr = format(selectedDate, 'yyyy-MM')
 
-    const { data: monthSummary } = useQuery({
+    const { data: monthSummary, refetch: refetchSummary } = useQuery({
         queryKey: ['month-summary', monthStr, filterPeriod],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser()

@@ -53,7 +53,12 @@ export function TransactionList({
         queryKey: ['transactions', format(selectedMonth, 'yyyy-MM'), searchQuery, filterPeriod, filterCategory],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return []
+            if (!user) {
+                console.log('TransactionList: No user found')
+                return []
+            }
+
+            console.log('TransactionList: Fetching for user', user.id, 'month', format(selectedMonth, 'yyyy-MM'))
 
             let query = supabase
                 .from('transactions')
@@ -97,10 +102,13 @@ export function TransactionList({
 
             if (error) {
                 console.error('Transactions fetch error:', error)
+                toast.error('내역을 불러오는 중 오류가 발생했습니다.')
                 throw error
             }
+            console.log('TransactionList: Fetched', data?.length, 'records')
             return data as any[]
         },
+        staleTime: 0, // Ensure we always get fresh data
     })
 
     const deleteMutation = useMutation({
@@ -138,7 +146,7 @@ export function TransactionList({
     )
 
     // 날짜별로 그룹화
-    const grouped = transactions.reduce((acc: Record<string, Transaction[]>, t: Transaction) => {
+    const grouped = (transactions || []).reduce((acc: Record<string, Transaction[]>, t: Transaction) => {
         const date = t.date
         if (!acc[date]) acc[date] = []
         acc[date].push(t)
