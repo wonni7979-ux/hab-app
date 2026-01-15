@@ -23,7 +23,7 @@ export function FloatingButton() {
 
     return (
         <Drawer open={open} onOpenChange={setOpen}>
-            <div className="fixed bottom-[100px] left-0 right-0 z-[60] pointer-events-none flex justify-center px-6">
+            <div className="fixed bottom-[100px] left-0 right-0 z-45 pointer-events-none flex justify-center px-6">
                 <div className="w-full max-w-md relative flex justify-end pointer-events-auto">
                     <DrawerTrigger asChild>
                         <Button

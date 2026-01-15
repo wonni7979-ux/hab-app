@@ -73,15 +73,26 @@ export default function CategoryManagementPage() {
             }
 
             if (category.id) {
+                // UPDATE: Remove id from payload as it's used in the .eq() filter
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, ...updateData } = payload
                 const { error } = await supabase
                     .from('categories')
-                    .update(payload)
+                    .update(updateData)
                     .eq('id', category.id)
                 if (error) throw error
             } else {
+                // INSERT: Strip id entirely to avoid PostgREST parsing 'id: undefined' as a column
+                const insertData = {
+                    name: payload.name,
+                    icon: payload.icon,
+                    color: payload.color,
+                    type: payload.type,
+                    user_id: payload.user_id
+                }
                 const { error } = await supabase
                     .from('categories')
-                    .insert([payload])
+                    .insert([insertData])
                 if (error) throw error
             }
         },
