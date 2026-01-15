@@ -268,66 +268,6 @@ export default function StatsPage() {
                     </button>
                 </div>
 
-                {/* Debt Dynamics Dashboard */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <Card className="p-6 bg-gradient-to-br from-rose-500/20 to-rose-600/5 backdrop-blur-3xl border-rose-500/20 rounded-[32px] overflow-hidden relative group">
-                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
-                        <div className="relative z-10 flex flex-col justify-between h-full">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="p-2.5 rounded-2xl bg-rose-500/20 text-rose-500">
-                                    <LoanIcon size={20} />
-                                </div>
-                                <span className="text-[10px] font-black text-rose-500/70 uppercase tracking-widest bg-rose-500/10 px-2 py-1 rounded-lg">전체 채무</span>
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-rose-50 tracking-tighter line-clamp-1">₩{stats?.totalDebt.toLocaleString()}</h3>
-                                <p className="text-[11px] font-bold text-rose-400 mt-1 flex items-center gap-1">
-                                    <Activity size={10} /> 자본 대비 부채 위험도
-                                </p>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6 bg-gradient-to-br from-amber-500/20 to-yellow-600/5 backdrop-blur-3xl border-amber-500/20 rounded-[32px] overflow-hidden relative group">
-                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
-                        <div className="relative z-10 flex flex-col justify-between h-full">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-500">
-                                    <Percent size={20} />
-                                </div>
-                                <span className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest bg-amber-500/10 px-2 py-1 rounded-lg">예상 발생 이자</span>
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-amber-50 tracking-tighter line-clamp-1">₩{Math.floor(stats?.totalAccruedInterest || 0).toLocaleString()}</h3>
-                                <p className="text-[11px] font-bold text-amber-400 mt-1 flex items-center gap-1">
-                                    <Info size={10} /> 누적 예상 지출액
-                                </p>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6 bg-gradient-to-br from-emerald-500/20 to-teal-600/5 backdrop-blur-3xl border-emerald-500/20 rounded-[32px] overflow-hidden relative group">
-                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
-                        <div className="relative z-10 flex flex-col justify-between h-full">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-500">
-                                    <Activity size={20} />
-                                </div>
-                                <span className="text-[10px] font-black text-emerald-500/70 uppercase tracking-widest bg-emerald-500/10 px-2 py-1 rounded-lg">자산 건전성</span>
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-emerald-50 tracking-tighter line-clamp-1">{stats?.debtToAssetRatio.toFixed(1)}%</h3>
-                                <p className="text-[11px] font-bold text-emerald-400 mt-1 flex items-center gap-1">
-                                    {stats?.debtToAssetRatio && stats.debtToAssetRatio > 40 ? (
-                                        <><ArrowUpRight size={10} className="text-rose-500" /> 주의가 필요한 수준</>
-                                    ) : (
-                                        <><ArrowDownRight size={10} /> 매우 안정적인 상태</>
-                                    )}
-                                </p>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
 
                 {/* Main Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -365,25 +305,25 @@ export default function StatsPage() {
                             </div>
                         </Card>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                        <div className="space-y-12">
                             <div className="space-y-8">
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.4em]">이달의 소비 총괄</p>
-                                    <h2 className="text-5xl font-black text-white tracking-tighter flex items-baseline gap-2">
+                                    <h2 className="text-5xl font-black text-white tracking-tighter flex items-baseline justify-center gap-2">
                                         ₩{stats?.totalExpense.toLocaleString()}
                                         <span className="text-lg font-bold text-slate-500 tracking-normal">total</span>
                                     </h2>
                                 </div>
 
-                                <div className="h-72 w-full relative group">
+                                <div className="h-80 w-full relative group">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
                                                 data={stats?.categoryStats as any}
                                                 cx="50%"
                                                 cy="50%"
-                                                innerRadius={85}
-                                                outerRadius={115}
+                                                innerRadius={90}
+                                                outerRadius={125}
                                                 paddingAngle={8}
                                                 dataKey="value"
                                                 stroke="none"
@@ -393,7 +333,7 @@ export default function StatsPage() {
                                                         key={`cell-${index}`}
                                                         fill={entry.color}
                                                         className="hover:opacity-90 transition-all cursor-pointer outline-none"
-                                                        style={{ filter: `drop-shadow(0 0 12px ${entry.color}33)` }}
+                                                        style={{ filter: `drop-shadow(0 0 15px ${entry.color}44)` }}
                                                     />
                                                 ))}
                                             </Pie>
@@ -422,7 +362,7 @@ export default function StatsPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3 content-center">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {stats?.categoryStats.map((cat, idx) => (
                                     <div key={idx} className="flex items-center justify-between p-5 rounded-[28px] bg-slate-900/40 border border-white/5 hover:border-white/10 hover:bg-slate-800/60 transition-all group cursor-pointer">
                                         <div className="flex items-center gap-5">
@@ -447,6 +387,74 @@ export default function StatsPage() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Debt Dynamics Dashboard - Relocated and Stacked */}
+                        <div className="space-y-4 pt-4">
+                            <h3 className="text-xl font-black text-white px-2 tracking-tight">채무 분석 리포트</h3>
+                            <div className="grid grid-cols-1 gap-4">
+                                <Card className="p-6 bg-gradient-to-r from-rose-500/20 to-transparent backdrop-blur-3xl border-rose-500/20 rounded-[32px] overflow-hidden relative group flex items-center justify-between">
+                                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
+                                    <div className="relative z-10 flex items-center gap-6">
+                                        <div className="p-3.5 rounded-2xl bg-rose-500/20 text-rose-500">
+                                            <LoanIcon size={24} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-md">전체 채무</span>
+                                            <h3 className="text-3xl font-black text-rose-50 tracking-tighter">₩{stats?.totalDebt.toLocaleString()}</h3>
+                                        </div>
+                                    </div>
+                                    <div className="relative z-10 text-right hidden sm:block">
+                                        <p className="text-[11px] font-bold text-rose-400 flex items-center justify-end gap-1">
+                                            <Activity size={10} /> 자본 대비 위험도
+                                        </p>
+                                        <p className="text-sm font-black text-rose-200">주의 관찰 필요</p>
+                                    </div>
+                                </Card>
+
+                                <Card className="p-6 bg-gradient-to-r from-amber-500/20 to-transparent backdrop-blur-3xl border-amber-500/20 rounded-[32px] overflow-hidden relative group flex items-center justify-between">
+                                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
+                                    <div className="relative z-10 flex items-center gap-6">
+                                        <div className="p-3.5 rounded-2xl bg-amber-500/20 text-amber-500">
+                                            <Percent size={24} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded-md">예상 발생 이자</span>
+                                            <h3 className="text-3xl font-black text-amber-50 tracking-tighter">₩{Math.floor(stats?.totalAccruedInterest || 0).toLocaleString()}</h3>
+                                        </div>
+                                    </div>
+                                    <div className="relative z-10 text-right hidden sm:block">
+                                        <p className="text-[11px] font-bold text-amber-400 flex items-center justify-end gap-1">
+                                            <Info size={10} /> 누적 예상 지출
+                                        </p>
+                                        <p className="text-sm font-black text-amber-200">매월 상환 권고</p>
+                                    </div>
+                                </Card>
+
+                                <Card className="p-6 bg-gradient-to-r from-emerald-500/20 to-transparent backdrop-blur-3xl border-emerald-500/20 rounded-[32px] overflow-hidden relative group flex items-center justify-between">
+                                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000" />
+                                    <div className="relative z-10 flex items-center gap-6">
+                                        <div className="p-3.5 rounded-2xl bg-emerald-500/20 text-emerald-500">
+                                            <Activity size={24} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-md">자산 건전성</span>
+                                            <h3 className="text-3xl font-black text-emerald-50 tracking-tighter">{stats?.debtToAssetRatio.toFixed(1)}%</h3>
+                                        </div>
+                                    </div>
+                                    <div className="relative z-10 text-right hidden sm:block">
+                                        <p className="text-[11px] font-bold text-emerald-400 flex items-center justify-end gap-1">
+                                            {stats?.debtToAssetRatio && stats.debtToAssetRatio > 40 ? (
+                                                <><ArrowUpRight size={10} className="text-rose-500" /> 위험 발생</>
+                                            ) : (
+                                                <><ArrowDownRight size={10} /> 매우 안정적</>
+                                            )}
+                                        </p>
+                                        <p className="text-sm font-black text-emerald-200">유동성 확보 중</p>
+                                    </div>
+                                </Card>
+                            </div>
+                        </div>
+
 
                         <div className="space-y-5 pt-4">
                             <h3 className="text-xl font-black text-white px-2 tracking-tight">상세 소비 내역</h3>
