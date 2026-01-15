@@ -3,15 +3,21 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Wallet, CreditCard, Landmark, Plus, MinusCircle, Wallet2 } from 'lucide-react'
+import { ArrowLeft, Wallet, CreditCard, Landmark, Plus, MinusCircle, Wallet2, Info } from 'lucide-react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { differenceInDays, parseISO } from 'date-fns'
 
 interface PaymentMethod {
     id: string
     name: string
     initial_balance: number
+    interest_rate: number
+    interest_period: 'monthly' | 'yearly'
+    loan_start_date: string | null
+    balance: number
+    accruedInterest: number
 }
 
 interface Transaction {
@@ -63,7 +69,23 @@ export default function AssetsPage() {
                 if (t.to_payment_method_id === m.id) balance += t.amount
             }
         })
-        return { ...m, balance }
+
+        // Calculate accrued interest if applicable
+        let accruedInterest = 0
+        if (balance < 0 && m.interest_rate > 0 && m.loan_start_date) {
+            const startDate = parseISO(m.loan_start_date)
+            const daysPassed = Math.max(0, differenceInDays(new Date(), startDate))
+
+            if (m.interest_period === 'yearly') {
+                // simple interest for now: balance * rate * (days / 365)
+                accruedInterest = Math.abs(balance) * (m.interest_rate / 100) * (daysPassed / 365)
+            } else {
+                // monthly: balance * rate * (days / 30)
+                accruedInterest = Math.abs(balance) * (m.interest_rate / 100) * (daysPassed / 30)
+            }
+        }
+
+        return { ...m, balance, accruedInterest }
     })
 
     const totalAssets = methodBalances.reduce((acc, m) => acc + m.balance, 0)
@@ -143,7 +165,7 @@ export default function AssetsPage() {
     )
 }
 
-function AccountCard({ account, isLiability }: { account: any, isLiability: boolean }) {
+function AccountCard({ account, isLiability }: { account: PaymentMethod, isLiability: boolean }) {
     const Icon = account.name.includes('카드') ? CreditCard : account.name.includes('통장') ? Landmark : Wallet2
 
     return (
@@ -166,13 +188,21 @@ function AccountCard({ account, isLiability }: { account: any, isLiability: bool
                         </p>
                     </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right space-y-1">
                     <p className={cn(
                         "text-[16px] font-black",
                         isLiability ? "text-rose-400" : "text-white"
                     )}>
                         {account.balance.toLocaleString()}원
                     </p>
+                    {isLiability && account.accruedInterest > 0 && (
+                        <div className="flex items-center justify-end gap-1 text-rose-300">
+                            <Info size={10} />
+                            <p className="text-[11px] font-bold">
+                                예상 이자: {Math.floor(account.accruedInterest).toLocaleString()}원
+                            </p>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

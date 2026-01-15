@@ -25,6 +25,9 @@ interface PaymentMethod {
     name: string
     initial_balance: number
     user_id?: string
+    interest_rate: number
+    interest_period: 'monthly' | 'yearly'
+    loan_start_date: string | null
 }
 
 export default function PaymentMethodManagementPage() {
@@ -36,6 +39,9 @@ export default function PaymentMethodManagementPage() {
     const [editingMethod, setEditingMethod] = useState<Partial<PaymentMethod> | null>(null)
     const [name, setName] = useState('')
     const [initialBalance, setInitialBalance] = useState('0')
+    const [interestRate, setInterestRate] = useState('0')
+    const [interestPeriod, setInterestPeriod] = useState<'monthly' | 'yearly'>('yearly')
+    const [loanStartDate, setLoanStartDate] = useState('')
 
     const { data: methods, isLoading } = useQuery({
         queryKey: ['payment_methods'],
@@ -76,7 +82,10 @@ export default function PaymentMethodManagementPage() {
                 const insertData = {
                     name: payload.name,
                     initial_balance: payload.initial_balance || 0,
-                    user_id: payload.user_id
+                    user_id: payload.user_id,
+                    interest_rate: payload.interest_rate || 0,
+                    interest_period: payload.interest_period || 'yearly',
+                    loan_start_date: payload.loan_start_date || null
                 }
                 const { error } = await supabase
                     .from('payment_methods')
@@ -120,12 +129,18 @@ export default function PaymentMethodManagementPage() {
         setEditingMethod(null)
         setName('')
         setInitialBalance('0')
+        setInterestRate('0')
+        setInterestPeriod('yearly')
+        setLoanStartDate('')
     }
 
     const handleEdit = (m: PaymentMethod) => {
         setEditingMethod(m)
         setName(m.name)
         setInitialBalance(m.initial_balance?.toString() || '0')
+        setInterestRate(m.interest_rate?.toString() || '0')
+        setInterestPeriod(m.interest_period || 'yearly')
+        setLoanStartDate(m.loan_start_date || '')
         setIsDialogOpen(true)
     }
 
@@ -145,7 +160,10 @@ export default function PaymentMethodManagementPage() {
         upsertMutation.mutate({
             id: editingMethod?.id,
             name,
-            initial_balance: amount
+            initial_balance: amount,
+            interest_rate: parseFloat(interestRate) || 0,
+            interest_period: interestPeriod,
+            loan_start_date: loanStartDate || null
         })
     }
 
@@ -190,6 +208,7 @@ export default function PaymentMethodManagementPage() {
                                         </div>
                                         <p className="text-xs font-medium text-slate-500">
                                             {m.name.includes('카드') ? '신용카드' : m.name.includes('통장') ? '계좌 • • • • 1234' : '현금'}
+                                            {m.interest_rate > 0 && ` • 이자 ${m.interest_rate}% (${m.interest_period === 'yearly' ? '연' : '월'})`}
                                         </p>
                                     </div>
                                 </div>
@@ -278,6 +297,44 @@ export default function PaymentMethodManagementPage() {
                                 />
                                 <p className="text-[10px] text-slate-500 px-1 italic">자산 현항 계산의 기준이 되는 현재 잔액을 입력해 주세요.</p>
                             </div>
+
+                            {parseInt(initialBalance) < 0 && (
+                                <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 space-y-4">
+                                    <p className="text-[11px] font-bold text-rose-400 uppercase tracking-wider">채무 이자 설정</p>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold text-slate-500">이자율 (%)</Label>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                value={interestRate}
+                                                onChange={(e) => setInterestRate(e.target.value)}
+                                                className="bg-slate-800 border-white/5 h-10 rounded-lg text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold text-slate-500">주기</Label>
+                                            <select
+                                                value={interestPeriod}
+                                                onChange={(e) => setInterestPeriod(e.target.value as 'monthly' | 'yearly')}
+                                                className="w-full bg-slate-800 border border-white/5 h-10 rounded-lg text-sm text-white px-2 outline-none focus:border-primary/50"
+                                            >
+                                                <option value="yearly">연 이자</option>
+                                                <option value="monthly">월 이자</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold text-slate-500">대출 시작일</Label>
+                                        <Input
+                                            type="date"
+                                            value={loanStartDate}
+                                            onChange={(e) => setLoanStartDate(e.target.value)}
+                                            className="bg-slate-800 border-white/5 h-10 rounded-lg text-sm text-white [color-scheme:dark]"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <DialogFooter className="flex gap-3 sm:justify-end pt-2">
