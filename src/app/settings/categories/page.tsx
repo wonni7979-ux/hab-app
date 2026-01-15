@@ -74,8 +74,7 @@ export default function CategoryManagementPage() {
 
             if (category.id) {
                 // UPDATE: Remove id from payload as it's used in the .eq() filter
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { id, ...updateData } = payload
+                const { id: _id, ...updateData } = payload
                 const { error } = await supabase
                     .from('categories')
                     .update(updateData)
