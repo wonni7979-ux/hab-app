@@ -58,6 +58,7 @@ export default function PaymentMethodManagementPage() {
             }
 
             if (method.id) {
+                // UPDATE: Remove id from payload as it's used in the .eq() filter
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { id, ...updateData } = payload
                 const { error } = await supabase
@@ -66,9 +67,14 @@ export default function PaymentMethodManagementPage() {
                     .eq('id', method.id)
                 if (error) throw error
             } else {
+                // INSERT: Strip id entirely to avoid PostgREST parsing 'id: undefined' as a column
+                const insertData = {
+                    name: payload.name,
+                    user_id: payload.user_id
+                }
                 const { error } = await supabase
                     .from('payment_methods')
-                    .insert([payload])
+                    .insert([insertData])
                 if (error) throw error
             }
         },

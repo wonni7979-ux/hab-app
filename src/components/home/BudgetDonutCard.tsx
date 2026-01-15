@@ -21,27 +21,25 @@ export function BudgetDonutCard() {
             <CardContent className="p-6 flex items-center gap-6">
                 <div className="relative h-24 w-24 flex-shrink-0" style={{ minWidth: '96px', minHeight: '96px' }}>
                     {isMounted && (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                                <Pie
-                                    data={data}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={35}
-                                    outerRadius={45}
-                                    paddingAngle={0}
-                                    dataKey="value"
-                                    stroke="none"
-                                    startAngle={90}
-                                    endAngle={-270}
-                                    isAnimationActive={false}
-                                >
-                                    {data.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                            </PieChart>
-                        </ResponsiveContainer>
+                        <PieChart width={96} height={96} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                            <Pie
+                                data={data}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={35}
+                                outerRadius={45}
+                                paddingAngle={0}
+                                dataKey="value"
+                                stroke="none"
+                                startAngle={90}
+                                endAngle={-270}
+                                isAnimationActive={false}
+                            >
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                        </PieChart>
                     )}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-sm font-black text-white leading-none">80%</span>
