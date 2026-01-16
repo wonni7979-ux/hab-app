@@ -86,11 +86,6 @@ export function TransactionList({
                 query = query.gte('date', start).lte('date', end)
             }
 
-            // Handle search
-            if (searchQuery) {
-                query = query.or(`description.ilike.%${searchQuery}%,categories.name.ilike.%${searchQuery}%`)
-            }
-
             // Handle category filter
             if (filterCategory) {
                 query = query.eq('category_id', filterCategory)
@@ -105,8 +100,20 @@ export function TransactionList({
                 toast.error('내역을 불러오는 중 오류가 발생했습니다.')
                 throw error
             }
-            console.log('TransactionList: Fetched', data?.length, 'records')
-            return data as any[]
+
+            let filteredData = data as any[]
+
+            // Handle search client-side to avoid PGRST100 error with or() on joined tables
+            if (searchQuery) {
+                const searchLower = searchQuery.toLowerCase()
+                filteredData = filteredData.filter(t =>
+                    (t.description && t.description.toLowerCase().includes(searchLower)) ||
+                    (t.categories?.name && t.categories.name.toLowerCase().includes(searchLower))
+                )
+            }
+
+            console.log('TransactionList: Fetched and filtered', filteredData.length, 'records')
+            return filteredData
         },
         staleTime: 0, // Ensure we always get fresh data
     })
