@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm, FieldValues } from 'react-hook-form'
 import { format } from 'date-fns'
 import { Calendar as CalendarIcon, Zap, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatAmount, parseAmount } from '@/lib/utils'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -94,7 +94,7 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
         const { error } = await supabase.from('transactions').insert({
             user_id: user.id,
             type: type,
-            amount: Number(values.amount),
+            amount: parseAmount(values.amount),
             description: values.description || (type === 'transfer' ? '자산 이동' : ''),
             category_id: type === 'transfer' ? null : (values.category_id || null),
             payment_method_id: values.payment_method_id,
@@ -129,7 +129,7 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
     const applyTemplate = (template: any) => {
         setType(template.type)
         form.setValue('type', template.type)
-        form.setValue('amount', template.amount.toString())
+        form.setValue('amount', formatAmount(template.amount))
         form.setValue('description', template.description || template.name)
         form.setValue('category_id', template.category_id || '')
         form.setValue('payment_method_id', template.payment_method_id || '')
@@ -197,9 +197,14 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xl">₩</span>
                                         <Input
                                             placeholder="0"
-                                            type="number"
+                                            type="text"
+                                            inputMode="numeric"
                                             className="bg-slate-800 border-white/5 text-white h-14 pl-10 text-2xl font-black rounded-2xl focus:border-primary/50"
                                             {...field}
+                                            onChange={(e) => {
+                                                const formatted = formatAmount(e.target.value)
+                                                field.onChange(formatted)
+                                            }}
                                         />
                                     </div>
                                 </FormControl>

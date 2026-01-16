@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { format, subMonths, addMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { cn } from '@/lib/utils'
+import { cn, formatAmount, parseAmount } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
     Dialog,
@@ -145,7 +145,7 @@ export default function BudgetManagementPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        const amount = parseInt(budgetInput.replace(/[^0-9]/g, ''))
+        const amount = parseAmount(budgetInput)
         if (isNaN(amount) || amount < 0) {
             toast.error('올바른 금액을 입력하세요.')
             return
@@ -302,8 +302,7 @@ export default function BudgetManagementPage() {
                                         inputMode="numeric"
                                         value={budgetInput}
                                         onChange={(e) => {
-                                            const val = e.target.value.replace(/[^0-9]/g, '')
-                                            setBudgetInput(val)
+                                            setBudgetInput(formatAmount(e.target.value))
                                         }}
                                         placeholder="금액을 입력하세요"
                                         className="bg-slate-800 border-white/5 text-white h-14 text-xl font-black rounded-2xl focus:border-primary/50 pl-10"

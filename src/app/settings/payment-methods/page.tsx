@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { cn } from '@/lib/utils'
+import { cn, formatAmount, parseAmount } from '@/lib/utils'
 
 interface PaymentMethod {
     id: string
@@ -137,7 +137,7 @@ export default function PaymentMethodManagementPage() {
     const handleEdit = (m: PaymentMethod) => {
         setEditingMethod(m)
         setName(m.name)
-        setInitialBalance(m.initial_balance?.toString() || '0')
+        setInitialBalance(formatAmount(m.initial_balance))
         setInterestRate(m.interest_rate?.toString() || '0')
         setInterestPeriod(m.interest_period || 'yearly')
         setLoanStartDate(m.loan_start_date || '')
@@ -155,8 +155,7 @@ export default function PaymentMethodManagementPage() {
             toast.error('이름을 입력해 주세요.')
             return
         }
-        const amountStr = initialBalance.replace(/(?!^-)[^0-9]/g, '')
-        const amount = parseInt(amountStr) || 0
+        const amount = parseAmount(initialBalance)
         upsertMutation.mutate({
             id: editingMethod?.id,
             name,
@@ -288,9 +287,7 @@ export default function PaymentMethodManagementPage() {
                                     inputMode="numeric"
                                     value={initialBalance}
                                     onChange={(e) => {
-                                        // Allow only digits and a single leading minus
-                                        const val = e.target.value.replace(/(?!^-)[^0-9]/g, '')
-                                        setInitialBalance(val)
+                                        setInitialBalance(formatAmount(e.target.value))
                                     }}
                                     placeholder="0"
                                     className="bg-slate-800 border-white/5 text-white h-12 rounded-xl focus:border-primary/50"
