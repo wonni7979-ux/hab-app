@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn, formatAmount, parseAmount } from '@/lib/utils'
 
 interface Template {
     id: string
@@ -20,6 +20,7 @@ interface Template {
     amount: number
     category_id: string | null
     payment_method_id: string
+    to_payment_method_id: string | null
     description: string | null
 }
 
@@ -36,8 +37,11 @@ export default function TemplatesPage() {
         amount: 0,
         category_id: null,
         payment_method_id: '',
+        to_payment_method_id: null,
         description: ''
     })
+
+    const [amountInput, setAmountInput] = useState('0')
 
     const { data: templates, isLoading } = useQuery({
         queryKey: ['transaction-templates'],
@@ -80,7 +84,11 @@ export default function TemplatesPage() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Not authenticated')
 
-            const data = { ...payload, user_id: user.id }
+            const data = {
+                ...payload,
+                user_id: user.id,
+                amount: parseAmount(amountInput)
+            }
             if (payload.id) {
                 const { error } = await supabase
                     .from('transaction_templates')
@@ -99,7 +107,8 @@ export default function TemplatesPage() {
             toast.success('템플릿이 저장되었습니다.')
             setIsAdding(false)
             setEditingId(null)
-            setFormData({ name: '', type: 'expense', amount: 0, category_id: null, payment_method_id: '', description: '' })
+            setFormData({ name: '', type: 'expense', amount: 0, category_id: null, payment_method_id: '', to_payment_method_id: null, description: '' })
+            setAmountInput('0')
         },
         onError: (error: any) => {
             toast.error('저장 중 오류가 발생했습니다: ' + error.message)
@@ -120,6 +129,7 @@ export default function TemplatesPage() {
     const handleEdit = (template: Template) => {
         setEditingId(template.id)
         setFormData(template)
+        setAmountInput(formatAmount(template.amount))
         setIsAdding(true)
     }
 
@@ -136,7 +146,8 @@ export default function TemplatesPage() {
                     onClick={() => {
                         setIsAdding(!isAdding)
                         setEditingId(null)
-                        setFormData({ name: '', type: 'expense', amount: 0, category_id: null, payment_method_id: '', description: '' })
+                        setFormData({ name: '', type: 'expense', amount: 0, category_id: null, payment_method_id: '', to_payment_method_id: null, description: '' })
+                        setAmountInput('0')
                     }}
                     className="p-2 bg-primary text-white rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-all"
                 >
@@ -174,19 +185,23 @@ export default function TemplatesPage() {
                                         </button>
                                     ))}
                                 </div>
-                                <Input
-                                    type="number"
-                                    placeholder="금액"
-                                    value={formData.amount || ''}
-                                    onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
-                                    className="bg-background border-white/5 text-white h-12 rounded-xl"
-                                />
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₩</span>
+                                    <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="금액"
+                                        value={amountInput}
+                                        onChange={(e) => setAmountInput(formatAmount(e.target.value))}
+                                        className="bg-background border-white/5 text-white h-12 rounded-xl pl-10 font-bold"
+                                    />
+                                </div>
                                 <Select
                                     value={formData.payment_method_id || ''}
                                     onValueChange={(v) => setFormData({ ...formData, payment_method_id: v })}
                                 >
                                     <SelectTrigger className="bg-background border-white/5 text-white h-12 rounded-xl">
-                                        <SelectValue placeholder="결제 수단 선택" />
+                                        <SelectValue placeholder={formData.type === 'transfer' ? "출금 계좌 선택" : "결제 수단 선택"} />
                                     </SelectTrigger>
                                     <SelectContent className="bg-slate-900 border-white/10">
                                         {paymentMethods?.map((m: any) => (
@@ -194,6 +209,22 @@ export default function TemplatesPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+
+                                {formData.type === 'transfer' && (
+                                    <Select
+                                        value={formData.to_payment_method_id || ''}
+                                        onValueChange={(v) => setFormData({ ...formData, to_payment_method_id: v })}
+                                    >
+                                        <SelectTrigger className="bg-background border-white/5 text-white h-12 rounded-xl">
+                                            <SelectValue placeholder="입금 계좌 선택" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-900 border-white/10">
+                                            {paymentMethods?.map((m: any) => (
+                                                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                                 {formData.type !== 'transfer' && (
                                     <Select
                                         value={formData.category_id || ''}
@@ -285,7 +316,12 @@ export default function TemplatesPage() {
                                     <div className="flex gap-4 pt-2">
                                         <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
                                             <Wallet size={12} />
-                                            <span>{template.payment_methods?.name}</span>
+                                            <span>
+                                                {template.type === 'transfer'
+                                                    ? `${template.payment_methods?.name} → ${template.to_payment_methods?.name || '?'}`
+                                                    : template.payment_methods?.name
+                                                }
+                                            </span>
                                         </div>
                                         {template.type !== 'transfer' && (
                                             <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
@@ -300,6 +336,6 @@ export default function TemplatesPage() {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

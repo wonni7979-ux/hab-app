@@ -22,9 +22,9 @@ export function FloatingButton() {
     if (pathname === '/login') return null
 
     return (
-        <Drawer open={open} onOpenChange={setOpen}>
-            <div className="fixed bottom-[100px] left-0 right-0 z-45 pointer-events-none flex justify-center px-6">
-                <div className="w-full max-w-md relative flex justify-end pointer-events-auto">
+        <div className="fixed bottom-[100px] left-0 right-0 z-45 pointer-events-none flex justify-center px-6">
+            <div className="w-full max-w-md relative flex justify-end pointer-events-auto">
+                <Drawer open={open} onOpenChange={setOpen}>
                     <DrawerTrigger asChild>
                         <Button
                             className="h-14 w-14 rounded-full shadow-2xl bg-primary hover:bg-primary/90 text-white transition-transform active:scale-90 border-4 border-white/10"
@@ -33,17 +33,17 @@ export function FloatingButton() {
                             <Plus className="h-8 w-8" />
                         </Button>
                     </DrawerTrigger>
-                </div>
+                    <DrawerContent className="max-w-md mx-auto bg-slate-900 border-t-slate-800">
+                        <DrawerHeader>
+                            <DrawerTitle className="text-white">거래 보태기</DrawerTitle>
+                            <DrawerDescription className="text-slate-400">오늘의 수입이나 지출을 빠르고 간편하게 기록하세요.</DrawerDescription>
+                        </DrawerHeader>
+                        <div className="p-4 pb-12">
+                            <TransactionForm onSuccess={() => setOpen(false)} />
+                        </div>
+                    </DrawerContent>
+                </Drawer>
             </div>
-            <DrawerContent className="max-w-md mx-auto bg-slate-900 border-t-slate-800">
-                <DrawerHeader>
-                    <DrawerTitle className="text-white">거래 보태기</DrawerTitle>
-                    <DrawerDescription className="text-slate-400">오늘의 수입이나 지출을 빠르고 간편하게 기록하세요.</DrawerDescription>
-                </DrawerHeader>
-                <div className="p-4 pb-12">
-                    <TransactionForm onSuccess={() => setOpen(false)} />
-                </div>
-            </DrawerContent>
-        </Drawer>
+        </div>
     )
 }
