@@ -58,11 +58,20 @@ const transactionSchema = z.object({
 type TransactionFormValues = z.infer<typeof transactionSchema>
 
 interface TransactionFormProps {
-
+    editData?: {
+        id: string
+        type: 'expense' | 'income' | 'transfer'
+        amount: number
+        description: string | null
+        category_id: string | null
+        payment_method_id: string
+        to_payment_method_id: string | null
+        date: string
+    }
     onSuccess?: () => void
 }
 
-export function TransactionForm({ onSuccess }: TransactionFormProps) {
+export function TransactionForm({ editData, onSuccess }: TransactionFormProps) {
     const [type, setType] = useState<'expense' | 'income' | 'transfer'>('expense')
     const { data: categories } = useCategories()
     const { data: paymentMethods } = usePaymentMethods()
@@ -72,14 +81,19 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
     const form = useForm<TransactionFormValues>({
         resolver: zodResolver(transactionSchema),
         defaultValues: {
-            type: 'expense',
-            amount: '',
-            description: '',
-            category_id: '',
-            payment_method_id: '',
-            to_payment_method_id: '',
-            date: new Date(),
+            type: editData?.type || 'expense',
+            amount: editData ? formatAmount(editData.amount) : '',
+            description: editData?.description || '',
+            category_id: editData?.category_id || '',
+            payment_method_id: editData?.payment_method_id || '',
+            to_payment_method_id: editData?.to_payment_method_id || '',
+            date: editData ? new Date(editData.date) : new Date(),
         },
+    })
+
+    // Update state when editData changes
+    useState(() => {
+        if (editData) setType(editData.type)
     })
 
     async function onSubmit(values: TransactionFormValues) {
@@ -91,7 +105,7 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
             return
         }
 
-        const { error } = await supabase.from('transactions').insert({
+        const payload = {
             user_id: user.id,
             type: type,
             amount: parseAmount(values.amount),
@@ -100,7 +114,11 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
             payment_method_id: values.payment_method_id,
             to_payment_method_id: type === 'transfer' ? (values.to_payment_method_id || null) : null,
             date: format(values.date, 'yyyy-MM-dd'),
-        })
+        }
+
+        const { error } = editData
+            ? await supabase.from('transactions').update(payload).eq('id', editData.id)
+            : await supabase.from('transactions').insert(payload)
 
         if (error) {
             toast.error('저장 중 오류가 발생했습니다: ' + error.message)
@@ -360,7 +378,7 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
                 </div>
 
                 <Button type="submit" className="w-full h-14 text-lg font-black bg-primary hover:bg-primary/90 text-white rounded-2xl shadow-lg shadow-primary/20 transition-all active:scale-95">
-                    {type === 'expense' ? '지출 기록하기' : type === 'income' ? '수입 기록하기' : '자산 이동하기'}
+                    {editData ? '수정 완료' : (type === 'expense' ? '지출 기록하기' : type === 'income' ? '수입 기록하기' : '자산 이동하기')}
                 </Button>
             </form>
         </Form>

@@ -2,12 +2,21 @@
 
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { Wallet, Trash2, Search, Filter, Calendar as CalendarIcon, Zap, Calendar } from 'lucide-react'
+import { Wallet, Trash2, Search, Filter, Calendar as CalendarIcon, Zap, Calendar, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import {
+    Drawer,
+    DrawerContent,
+    DrawerDescription,
+    DrawerHeader,
+    DrawerTitle,
+} from "@/components/ui/drawer"
+import { TransactionForm } from '@/components/forms/TransactionForm'
 
 interface Category {
     name: string
@@ -48,6 +57,7 @@ export function TransactionList({
 }: TransactionListProps) {
     const supabase = createClient()
     const queryClient = useQueryClient()
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
 
     const { data: transactions, isLoading } = useQuery({
         queryKey: ['transactions', format(selectedMonth, 'yyyy-MM'), searchQuery, filterPeriod, filterCategory],
@@ -214,6 +224,7 @@ export function TransactionList({
                             {dayTransactions.map((t: Transaction) => (
                                 <div
                                     key={t.id}
+                                    onClick={() => setSelectedTransaction(t)}
                                     className="group flex items-center gap-4 p-5 bg-slate-900/40 backdrop-blur-md border border-white/5 rounded-[28px] hover:bg-slate-800/60 transition-all duration-300 cursor-pointer relative overflow-hidden"
                                 >
                                     {/* Glass reflection effect */}
@@ -294,6 +305,24 @@ export function TransactionList({
                     </div>
                 )
             })}
+
+            <Drawer open={!!selectedTransaction} onOpenChange={(open) => !open && setSelectedTransaction(null)}>
+                <DrawerContent className="max-w-md mx-auto bg-slate-900 border-t-slate-800 max-h-[92vh]">
+                    <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-slate-800 my-4" />
+                    <DrawerHeader>
+                        <DrawerTitle className="text-white">거래 상세 정보</DrawerTitle>
+                        <DrawerDescription className="text-slate-400">거래 내용을 확인하고 수정할 수 있습니다.</DrawerDescription>
+                    </DrawerHeader>
+                    <div className="p-4 pb-24 overflow-y-auto overflow-x-hidden">
+                        {selectedTransaction && (
+                            <TransactionForm
+                                editData={selectedTransaction}
+                                onSuccess={() => setSelectedTransaction(null)}
+                            />
+                        )}
+                    </div>
+                </DrawerContent>
+            </Drawer>
         </div>
     )
 }
