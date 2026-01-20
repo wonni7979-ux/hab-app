@@ -266,6 +266,7 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
                                 <Input
                                     placeholder={type === 'transfer' ? "예: 생활비 이체, 저축 등" : "무엇을 위해 지출/수입 하셨나요?"}
                                     className="bg-slate-800 border-white/5 text-white h-12 rounded-xl focus:border-primary/50"
+                                    autoComplete="off"
                                     {...field}
                                 />
                             </FormControl>

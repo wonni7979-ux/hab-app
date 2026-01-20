@@ -33,12 +33,12 @@ export function FloatingButton() {
                             <Plus className="h-8 w-8" />
                         </Button>
                     </DrawerTrigger>
-                    <DrawerContent className="max-w-md mx-auto bg-slate-900 border-t-slate-800">
+                    <DrawerContent className="max-w-md mx-auto bg-slate-900 border-t-slate-800 max-h-[92vh]">
                         <DrawerHeader>
-                            <DrawerTitle className="text-white">거래 보태기</DrawerTitle>
+                            <DrawerTitle className="text-white">거래 기록</DrawerTitle>
                             <DrawerDescription className="text-slate-400">오늘의 수입이나 지출을 빠르고 간편하게 기록하세요.</DrawerDescription>
                         </DrawerHeader>
-                        <div className="p-4 pb-12">
+                        <div className="p-4 pb-24 overflow-y-auto overflow-x-hidden">
                             <TransactionForm onSuccess={() => setOpen(false)} />
                         </div>
                     </DrawerContent>
