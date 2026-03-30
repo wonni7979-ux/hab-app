@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📘 Household Account Book (가계부 앱) - 종합 관리 가이드
 
-## Getting Started
+이 프로젝트는 [Next.js](https://nextjs.org)로 구축된 모던 가계부 서비스로, 뛰어난 UX와 함께 운영상의 수익화, 보안, 데이터 기반 분석 기능(B2B 관리 옵션)을 모두 갖추고 있습니다.
 
-First, run the development server:
+## 🚀 프로젝트 시작하기
 
 ```bash
+# 개발 서버 실행
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+서버가 실행되면 [http://localhost:3000](http://localhost:3000)에서 결과를 확인할 수 있습니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ⚙️ 관리자 기능 및 DB 초기 설정 가이드
 
-## Learn More
+본 가계부 프로젝트는 강력한 운영자(Admin) 모드를 지원합니다. 기능을 활성화하려면 Supabase 상에 생성된 마이그레이션 스크립트를 통해 테이블을 먼저 적용해야 합니다.
+`supabase/migrations` 폴더에 위치한 파일들을 **Supabase SQL Editor**에서 순서대로 실행하세요.
 
-To learn more about Next.js, take a look at the following resources:
+1. **`admin_setup.sql`** : `admins` 테이블 생성 및 FDS(이상거래탐지) 트리거 로직 적용.
+2. **`advanced_setup.sql`** : 공지사항(`announcements`), 타겟 배너 광고(`advertisements`) 테이블.
+3. **`test_accounts_setup.sql`** : 거시 통계에서 제외될 내부망 테스트 계정 지정(`test_accounts`) 기능.
+4. **`analytics_setup.sql`** : 사용자의 퍼널(단계별 이탈률)과 입력 소요 시간을 기록하는 UX 트래킹 테이블.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+> **❗️ 최고 관리자(Superadmin) 권한 부여 규칙**
+> 웹앱의 `[설정] -> [운영자 센터]`에 진입하려면, 백엔드의 `public.admins` 테이블에 본인 계정의 `user_id`를 추가하고 `role = 'superadmin'` 으로 지정해주어야 합니다.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 📊 관리자(Admin) 주요 기능 스펙
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| 메뉴 / 기능 명칭 | 요약 설명 | 엔드포인트 경로 |
+| :--- | :--- | :--- |
+| **UX 퍼널 & 이탈 추적** | 사용자가 가계부 작성창에 들어온 이후 어디서 이탈하는지 각 단계별 유입률 그래프 확인 및 1건 당 평균 소요 시간(초) 모니터링 | `/admin/analytics` |
+| **장기 이탈자 리텐션** | 7일 이상 입력하지 않은 유저를 추출하고, 클릭 한 번으로 독려 푸시 메시지를 발송 (앱 재방문 유도) | `/admin/retention` |
+| **사용자 거시 데이터** | 이번 달 앱 전체 지출/수입량 거시 그래프 및 사용자 데이터 차트화. (테스트 계정 데이터 ON/OFF 스위치 지원) | `/admin/users` |
+| **DB CSV 즉각 추출** | 앱 전체 금융 트랜잭션 데이터를 백업/분석하기 위해 Excel, CSV 파일로 한글 깨짐 없이 즉시 다운로드 | `/admin/data` |
+| **맞춤형 타겟 광고** | 특정 금액 조건 이상 거래 시 홈 화면에 노출시킬 수익화 배너 관리 도구 | `/admin/ads` |
+| **시스템 공지사항** | 점검 등 긴급 이슈 발생 시 유저의 메인 대시보드 상단에 띄울 시스템 경고창 등록 기능 | `/admin/announcements` |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🛡️ 기술 및 보안 (FDS)
+- **비정상 도배 방지 (Rate Limit)** : 1분 이내 50건 이상 연속 데이터 주입 시 DB 트리거 작동.
+- **백업 파일 유출 방어** : `/backup.zip` / `.sql` 등의 민감한 폴더 추측 스캐닝 공격 방어를 위해 미들웨어 기반 `404` 강제 리다이렉트 적용.
+- **역할 보안 마스킹 (RBAC)** : `cs`(고객 응대) 권한 관리자가 사용자 데이터를 조회할 시, 구체적인 메모와 고액 금액을 `***` 로 가리는 자동 데이터 마스킹 기술 적용 완료.
