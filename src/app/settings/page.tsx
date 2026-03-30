@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
 
 export default function SettingsPage() {
     const supabase = createClient()
@@ -24,6 +25,22 @@ export default function SettingsPage() {
         toast.success('로그아웃 되었습니다.')
     }
 
+    const { data: isAdmin } = useQuery({
+        queryKey: ['is_admin_check'],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return false
+            
+            const { data } = await supabase
+                .from('admins')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+                
+            return !!data
+        }
+    })
+
     const menuItems = [
         { icon: Tags, label: '카테고리 관리', href: '/settings/categories', color: 'text-blue-400' },
         { icon: CreditCard, label: '결제 수단 관리', href: '/settings/payment-methods', color: 'text-emerald-400' },
@@ -32,7 +49,7 @@ export default function SettingsPage() {
         { icon: Bell, label: '알림 설정', href: '/settings/notifications', color: 'text-amber-400' },
         { icon: User, label: '프로필 수정', href: '/settings/profile', color: 'text-slate-400' },
         { icon: MessageSquare, label: '고객 센터 / 1:1 문의', href: '/settings/support', color: 'text-indigo-400' },
-        { icon: ShieldAlert, label: '운영자 센터', href: '/admin', color: 'text-red-500' },
+        ...(isAdmin ? [{ icon: ShieldAlert, label: '운영자 센터', href: '/admin', color: 'text-red-500' }] : []),
     ]
 
     return (
