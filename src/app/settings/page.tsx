@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, ChevronRight, Tags, CreditCard, PiggyBank, Zap, Bell, User, LogOut, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Tags, CreditCard, PiggyBank, Zap, Bell, User, LogOut, ShieldAlert, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
@@ -31,6 +31,7 @@ export default function SettingsPage() {
         { icon: Zap, label: '반복 거래 관리', href: '/settings/templates', color: 'text-yellow-400' },
         { icon: Bell, label: '알림 설정', href: '/settings/notifications', color: 'text-amber-400' },
         { icon: User, label: '프로필 수정', href: '/settings/profile', color: 'text-slate-400' },
+        { icon: MessageSquare, label: '고객 센터 / 1:1 문의', href: '/settings/support', color: 'text-indigo-400' },
         { icon: ShieldAlert, label: '운영자 센터', href: '/admin', color: 'text-red-500' },
     ]
 

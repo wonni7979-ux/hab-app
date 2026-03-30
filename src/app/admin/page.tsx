@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity } from 'lucide-react'
+import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity, MessageSquareText } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { startOfMonth, endOfMonth } from 'date-fns'
 
@@ -111,6 +111,14 @@ export default function AdminIndexPage() {
             href: '/admin/data',
             color: 'text-emerald-500',
             bg: 'bg-emerald-50'
+        },
+        {
+            title: '1:1 고객 문의 관리 (CS)',
+            desc: '사용자 지원 메시지 답변 및 해결',
+            icon: MessageSquareText,
+            href: '/admin/support',
+            color: 'text-indigo-500',
+            bg: 'bg-indigo-50'
         }
     ]
 
