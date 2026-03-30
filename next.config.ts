@@ -25,6 +25,16 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  async redirects() {
+    return [
+      {
+        source: '/:path*\\.(zip|bak|tar|gz|sql|env|log)',
+        destination: '/404',
+        permanent: true,
+      },
+    ];
+  },
 };
+
 
 export default nextConfig;
