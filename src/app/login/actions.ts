@@ -32,9 +32,23 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
     const supabase = await createClient()
 
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    const name = formData.get('name') as string
+    const phone_number = formData.get('phone_number') as string
+
+    if (!name || name.trim() === '') return { error: '이름을 입력해주세요.' }
+    if (!phone_number || phone_number.trim() === '') return { error: '휴대폰 번호를 입력해주세요.' }
+
     const data = {
-        email: formData.get('email') as string,
-        password: formData.get('password') as string,
+        email,
+        password,
+        options: {
+            data: {
+                name: name.trim(),
+                phone_number: phone_number.replace(/[^0-9]/g, '') // 숫자만 추출
+            }
+        }
     }
 
     const { error } = await supabase.auth.signUp(data)
@@ -95,4 +109,32 @@ export async function forgotPassword(formData: FormData) {
     }
 
     return { success: '비밀번호 재설정 링크가 이메일로 전송되었습니다.' }
+}
+
+export async function findId(formData: FormData) {
+    const supabase = await createClient()
+    
+    const name = formData.get('name') as string
+    const phone_number = formData.get('phone_number') as string
+
+    if (!name || name.trim() === '') return { error: '가입 시 등록한 이름을 입력해주세요.' }
+    if (!phone_number || phone_number.trim() === '') return { error: '휴대폰 번호를 입력해주세요.' }
+
+    const cleanPhone = phone_number.replace(/[^0-9]/g, '')
+
+    // 호출은 새로 생성한 find_user_email RPC로 안전하게 조회
+    const { data: obfuscatedEmail, error } = await supabase.rpc('find_user_email', {
+        lookup_name: name.trim(),
+        lookup_phone: cleanPhone
+    })
+
+    if (error) {
+        return { error: '서버 조회 중 오류가 발생했습니다.' }
+    }
+
+    if (!obfuscatedEmail) {
+        return { error: '일치하는 가입 정보가 없습니다.' }
+    }
+
+    return { success: `찾으시는 아이디는 [ ${obfuscatedEmail} ] 입니다.` }
 }
