@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: '더더 간단한 가계부',
+        name: '모두의 가계부',
         short_name: '더간가',
         description: '노션 스타일의 심플하고 빠른 PWA 가계부',
         start_url: '/',

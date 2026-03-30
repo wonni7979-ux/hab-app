@@ -36,7 +36,7 @@ export default function LoginPage() {
                     <PiggyBank size={40} />
                 </div>
                 <div className="text-center space-y-1">
-                    <h1 className="text-3xl font-black tracking-tight text-white">더더 간단한 가계부</h1>
+                    <h1 className="text-3xl font-black tracking-tight text-white">모두의 가계부</h1>
                     <p className="text-slate-400 font-medium text-sm">나의 소중한 자산 관리, 지금 시작하세요.</p>
                 </div>
             </div>
@@ -141,7 +141,7 @@ export default function LoginPage() {
             </Card>
 
             <p className="mt-12 text-[10px] font-bold text-slate-600 text-center uppercase tracking-[0.2em] z-10">
-                © 2026 더더 간단한 가계부. All rights reserved.
+                © 2026 모두의 가계부. All rights reserved.
             </p>
         </div>
     )

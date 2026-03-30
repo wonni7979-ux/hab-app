@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "더더 간단한 가계부",
+  title: "모두의 가계부",
   description: "노션 스타일의 심플하고 빠른 PWA 가계부",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
