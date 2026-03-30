@@ -73,6 +73,22 @@ export default function AdminIndexPage() {
             bg: 'bg-rose-50'
         },
         {
+            title: 'UX 퍼널 분석 & 이탈 추적',
+            desc: '입력 소요 시간 및 작성 중단율 분석 대시보드',
+            icon: Activity,
+            href: '/admin/analytics',
+            color: 'text-sky-500',
+            bg: 'bg-sky-50'
+        },
+        {
+            title: '이탈 사용자 리텐션 관리',
+            desc: '7일 이상 장기 미입력자 조회 및 푸시 독려',
+            icon: BellRing, /* or another suitable icon, I am reusing BellRing for push notifications concept */
+            href: '/admin/retention',
+            color: 'text-pink-500',
+            bg: 'bg-pink-50'
+        },
+        {
             title: '공지사항 관리',
             desc: '사용자 메인 홈에 노출될 시스템 알림 배포',
             icon: BellRing,

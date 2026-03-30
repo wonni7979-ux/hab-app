@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm, FieldValues } from 'react-hook-form'
 import { format } from 'date-fns'
 import { Calendar as CalendarIcon, Zap, Plus } from 'lucide-react'
@@ -92,9 +92,55 @@ export function TransactionForm({ editData, onSuccess }: TransactionFormProps) {
     })
 
     // Update state when editData changes
-    useState(() => {
+    useEffect(() => {
         if (editData) setType(editData.type)
-    })
+    }, [editData])
+
+    // --- UX Analytics Tracking ---
+    const sessionId = useRef(crypto.randomUUID())
+    const isSubmitted = useRef(false)
+    const latestValues = useRef(form.getValues())
+
+    useEffect(() => {
+        const subscription = form.watch((value) => {
+            latestValues.current = value as any
+        })
+        return () => subscription.unsubscribe()
+    }, [form.watch])
+
+    useEffect(() => {
+        const logEvent = async (eventType: string, extraData: any = {}) => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) return
+
+                await supabase.from('analytics_logs').insert({
+                    session_id: sessionId.current,
+                    user_id: session.user.id,
+                    event_type: eventType,
+                    event_data: extraData
+                })
+            } catch (e) {
+                console.error('Analytics error:', e)
+            }
+        }
+
+        logEvent('form_open')
+
+        return () => {
+            if (!isSubmitted.current) {
+                // Determine drop-off stage based on latest values
+                const vals = latestValues.current
+                let stage = 'form_open'
+                if (vals.amount && vals.amount !== '0' && vals.amount !== '') stage = 'input_amount'
+                if (vals.category_id) stage = 'select_category'
+                if (vals.payment_method_id) stage = 'select_payment'
+                
+                logEvent('form_close', { drop_off_stage: stage })
+            }
+        }
+    }, [])
+    // ----------------------------
 
     async function onSubmit(values: TransactionFormValues) {
 
@@ -124,6 +170,21 @@ export function TransactionForm({ editData, onSuccess }: TransactionFormProps) {
             toast.error('저장 중 오류가 발생했습니다: ' + error.message)
         } else {
             toast.success('거래가 저장되었습니다.')
+            
+            // Analytics: Complete Form
+            isSubmitted.current = true
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    await supabase.from('analytics_logs').insert({
+                        session_id: sessionId.current,
+                        user_id: session.user.id,
+                        event_type: 'form_complete',
+                        event_data: { type: type, success: true }
+                    })
+                }
+            } catch (e) {}
+
             queryClient.invalidateQueries({ queryKey: ['transactions'] })
             form.reset()
             onSuccess?.()
