@@ -60,7 +60,7 @@ export default function AdminRetentionPage() {
                 <div>
                     <h4 className="text-sm font-bold text-pink-800">장기 미입력자 맞춤형 푸시 (Retention Push)</h4>
                     <p className="text-xs text-pink-700/80 mt-1 leading-relaxed">
-                        최근 7일 이상 가계부를 작성하지 않은 사용자에게 "지출 내역 10초 작성" 독려 메시지를 보내어 앱 재방문을 유도합니다.
+                        최근 7일 이상 가계부를 작성하지 않은 사용자에게 &quot;지출 내역 10초 작성&quot; 독려 메시지를 보내어 앱 재방문을 유도합니다.
                     </p>
                 </div>
             </div>

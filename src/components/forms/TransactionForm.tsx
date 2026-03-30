@@ -106,7 +106,7 @@ export function TransactionForm({ editData, onSuccess }: TransactionFormProps) {
             latestValues.current = value as any
         })
         return () => subscription.unsubscribe()
-    }, [form.watch])
+    }, [form])
 
     useEffect(() => {
         const logEvent = async (eventType: string, extraData: any = {}) => {
@@ -139,7 +139,7 @@ export function TransactionForm({ editData, onSuccess }: TransactionFormProps) {
                 logEvent('form_close', { drop_off_stage: stage })
             }
         }
-    }, [])
+    }, [supabase])
     // ----------------------------
 
     async function onSubmit(values: TransactionFormValues) {
