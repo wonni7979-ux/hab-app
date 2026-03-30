@@ -68,3 +68,20 @@ export async function signout() {
     revalidatePath('/', 'layout')
     redirect('/login')
 }
+
+export async function forgotPassword(formData: FormData) {
+    const supabase = await createClient()
+    const email = formData.get('email') as string
+
+    if (!email) return { error: '이메일을 입력해주세요.' }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/update-password`,
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: '비밀번호 재설정 링크가 이메일로 전송되었습니다.' }
+}

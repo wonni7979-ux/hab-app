@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { login, signup } from './actions'
+import { login, signup, forgotPassword } from './actions'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -12,10 +12,15 @@ import { PiggyBank } from 'lucide-react'
 
 export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
+    const [activeTab, setActiveTab] = useState('login')
 
-    async function handleSubmit(formData: FormData, mode: 'login' | 'signup') {
+    async function handleSubmit(formData: FormData, mode: 'login' | 'signup' | 'forgot') {
         setIsLoading(true)
-        const result = mode === 'login' ? await login(formData) : await signup(formData)
+        
+        let result;
+        if (mode === 'login') result = await login(formData)
+        else if (mode === 'signup') result = await signup(formData)
+        else if (mode === 'forgot') result = await forgotPassword(formData)
 
         if (result && 'error' in result && result.error) {
             toast.error(result.error)
@@ -42,9 +47,9 @@ export default function LoginPage() {
             </div>
 
             <Card className="w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl z-10 overflow-hidden rounded-3xl">
-                <Tabs defaultValue="login" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <CardHeader className="p-1">
-                        <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-slate-800/30 h-14 p-1">
+                        <TabsList className={`grid w-full rounded-2xl bg-slate-800/30 h-14 p-1 ${activeTab === 'forgot' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                             <TabsTrigger
                                 value="login"
                                 className="rounded-xl text-sm font-bold data-[state=active]:bg-primary data-[state=active]:text-white transition-all"
@@ -57,6 +62,14 @@ export default function LoginPage() {
                             >
                                 회원가입
                             </TabsTrigger>
+                            {activeTab === 'forgot' && (
+                                <TabsTrigger
+                                    value="forgot"
+                                    className="rounded-xl text-sm font-bold data-[state=active]:bg-primary data-[state=active]:text-white transition-all"
+                                >
+                                    비번 찾기
+                                </TabsTrigger>
+                            )}
                         </TabsList>
                     </CardHeader>
 
@@ -89,7 +102,7 @@ export default function LoginPage() {
                                 <Button className="w-full h-14 text-base font-black rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-lg transition-all active:scale-95" type="submit" disabled={isLoading}>
                                     {isLoading ? '로그인 중...' : '로그인'}
                                 </Button>
-                                <Button variant="link" className="text-xs font-bold text-slate-500 hover:text-primary transition-colors" type="button">
+                                <Button onClick={() => setActiveTab('forgot')} variant="link" className="text-xs font-bold text-slate-500 hover:text-primary transition-colors" type="button">
                                     비밀번호를 잊으셨나요?
                                 </Button>
                             </CardFooter>
@@ -133,6 +146,35 @@ export default function LoginPage() {
                             <CardFooter className="p-8 pt-4">
                                 <Button className="w-full h-14 text-base font-black rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-lg transition-all active:scale-95" type="submit" disabled={isLoading}>
                                     {isLoading ? '가입 중...' : '회원가입'}
+                                </Button>
+                            </CardFooter>
+                        </form>
+                    </TabsContent>
+
+                    <TabsContent value="forgot" className="mt-0">
+                        <form action={(fd) => handleSubmit(fd, 'forgot')}>
+                            <CardContent className="space-y-5 pt-8 px-8">
+                                <div className="space-y-2">
+                                    <Label htmlFor="forgot-email" className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">가입한 이메일 입력</Label>
+                                    <Input
+                                        id="forgot-email"
+                                        name="email"
+                                        type="email"
+                                        placeholder="hello@example.com"
+                                        className="h-12 bg-slate-800/50 border-white/5 focus:border-primary/50 text-white rounded-xl"
+                                        required
+                                    />
+                                </div>
+                                <p className="text-xs text-slate-400 px-1 leading-relaxed">
+                                    등록하신 이메일을 입력하시면 비밀번호를 다시 설정할 수 있는 보안 링크를 보내드립니다.
+                                </p>
+                            </CardContent>
+                            <CardFooter className="flex flex-col gap-4 p-8 pt-4">
+                                <Button className="w-full h-14 text-base font-black rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-lg transition-all active:scale-95" type="submit" disabled={isLoading}>
+                                    {isLoading ? '전송 중...' : '복구 링크 보내기'}
+                                </Button>
+                                <Button onClick={() => setActiveTab('login')} variant="link" className="text-xs font-bold text-slate-500 hover:text-primary transition-colors" type="button">
+                                    다시 로그인 페이지로 돌아가기
                                 </Button>
                             </CardFooter>
                         </form>
