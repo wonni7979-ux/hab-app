@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
 
 export default function SettingsPage() {
     const supabase = createClient()
@@ -25,21 +25,27 @@ export default function SettingsPage() {
         toast.success('로그아웃 되었습니다.')
     }
 
-    const { data: isAdmin } = useQuery({
-        queryKey: ['is_admin_check'],
-        queryFn: async () => {
+    const [isAdmin, setIsAdmin] = useState(false)
+
+    useEffect(() => {
+        async function checkAdmin() {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return false
+            if (!user) return
             
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('admins')
                 .select('role')
                 .eq('id', user.id)
                 .single()
                 
-            return !!data
+            if (data && !error) {
+                setIsAdmin(true)
+            } else {
+                setIsAdmin(false)
+            }
         }
-    })
+        checkAdmin()
+    }, [supabase])
 
     const menuItems = [
         { icon: Tags, label: '카테고리 관리', href: '/settings/categories', color: 'text-blue-400' },
