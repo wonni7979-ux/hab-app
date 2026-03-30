@@ -2,6 +2,8 @@ import { DashboardHeader } from '@/components/home/DashboardHeader'
 import { CalendarSection } from '@/components/home/CalendarSection'
 import { BudgetDonutCard } from '@/components/home/BudgetDonutCard'
 import { AISummaryCard } from '@/components/home/AISummaryCard'
+import { AnnouncementsBanner } from '@/components/home/AnnouncementsBanner'
+import { TargetedAds } from '@/components/home/TargetedAds'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +12,11 @@ export default async function HomePage() {
     <div className="flex flex-col min-h-screen bg-background pb-32">
       <DashboardHeader />
 
+      <AnnouncementsBanner />
+
       <div className="space-y-8 py-2">
         <CalendarSection />
+        <TargetedAds />
         <BudgetDonutCard />
         <AISummaryCard />
       </div>
