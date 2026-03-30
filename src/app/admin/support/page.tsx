@@ -123,7 +123,7 @@ export default function AdminSupportPage() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="text-xs font-bold text-slate-500 truncate pr-2">
-                                                {msg.users?.email || '알 수 없는 사용자'}
+                                                {((msg.users as any)?.email) || ((msg.users as any)?.[0]?.email) || '알 수 없는 사용자'}
                                             </span>
                                             <span className="text-[10px] text-slate-400 whitespace-nowrap">
                                                 {format(new Date(msg.created_at), 'MM/dd HH:mm')}
