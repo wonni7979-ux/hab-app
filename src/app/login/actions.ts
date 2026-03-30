@@ -75,6 +75,17 @@ export async function forgotPassword(formData: FormData) {
 
     if (!email) return { error: '이메일을 입력해주세요.' }
 
+    // 1. 방금 만든 안전한 검색 함수(RPC)를 통해 이메일 점검
+    const { data: isExist, error: rpcError } = await supabase.rpc('check_user_exists', { lookup_email: email })
+
+    if (rpcError) {
+        console.error("이메일 체크 에러:", rpcError)
+    } else if (isExist === false) {
+        // 등록되지 않은 이메일이면 바로 실패 처리
+        return { error: '가입되지 않은 이메일입니다.' }
+    }
+
+    // 2. 이메일이 존재하면 리셋 시스템 작동
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password`,
     })
