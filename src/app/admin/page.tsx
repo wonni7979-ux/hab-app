@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity, MessageSquareText } from 'lucide-react'
+import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity, MessageSquareText, KeyRound } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { startOfMonth, endOfMonth } from 'date-fns'
 
@@ -119,6 +119,14 @@ export default function AdminIndexPage() {
             href: '/admin/support',
             color: 'text-indigo-500',
             bg: 'bg-indigo-50'
+        },
+        {
+            title: '고객 계정 관리 (ID/PW 복구)',
+            desc: '이메일 확인 및 강제 비밀번호 초기화',
+            icon: KeyRound,
+            href: '/admin/accounts',
+            color: 'text-rose-500',
+            bg: 'bg-rose-50'
         }
     ]
 
