@@ -16,7 +16,7 @@ ALTER TABLE public.test_accounts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Superadmins can read test accounts" ON public.test_accounts
     FOR SELECT USING (
         EXISTS (SELECT 1 FROM public.admins WHERE id = auth.uid() AND role = 'superadmin')
-        OR id = auth.uid() -- Users can see if they themselves are marked as test (optional)
+        OR user_id = auth.uid() -- Users can see if they themselves are marked as test (optional)
     );
 
 CREATE POLICY "Superadmins can insert test accounts" ON public.test_accounts
