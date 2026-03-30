@@ -76,7 +76,7 @@ export async function forgotPassword(formData: FormData) {
     if (!email) return { error: '이메일을 입력해주세요.' }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/update-password`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password`,
     })
 
     if (error) {
