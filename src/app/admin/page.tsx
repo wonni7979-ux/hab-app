@@ -1,9 +1,52 @@
 'use client'
 
 import Link from 'next/link'
-import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
+import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { startOfMonth, endOfMonth } from 'date-fns'
 
 export default function AdminIndexPage() {
+    const supabase = createClient()
+
+    // Fetch this month's macro statistics
+    const { data: macroStats, isLoading } = useQuery({
+        queryKey: ['admin_macro_stats'],
+        queryFn: async () => {
+            const start = startOfMonth(new Date()).toISOString()
+            const end = endOfMonth(new Date()).toISOString()
+
+            // Fetch test accounts list
+            const { data: testAccounts } = await supabase.from('test_accounts').select('user_id')
+            const testUserIds = testAccounts?.map(t => t.user_id) || []
+
+            // Fetch transactions for this month
+            const { data, error } = await supabase
+                .from('transactions')
+                .select('amount, type, user_id')
+                .gte('created_at', start)
+                .lte('created_at', end)
+
+            if (error) return null
+
+            // Filter out test accounts for accurate macro stats
+            const validData = data.filter(tx => !testUserIds.includes(tx.user_id))
+
+            let income = 0
+            let expense = 0
+            validData.forEach(tx => {
+                if (tx.type === 'income') income += Number(tx.amount)
+                if (tx.type === 'expense') expense += Number(tx.amount)
+            })
+
+            return [
+                { name: '유입액 (수입)', value: income, fill: '#3b82f6' },
+                { name: '지출액 (비용)', value: expense, fill: '#ef4444' }
+            ]
+        }
+    })
+
     const adminMenus = [
         {
             title: '표준 카테고리 관리',
@@ -60,6 +103,40 @@ export default function AdminIndexPage() {
             <div>
                 <h2 className="text-xl font-bold text-slate-800">운영자 센터 가이드</h2>
                 <p className="text-sm text-slate-500 mt-1">시스템 권한에 따라 접근할 수 있는 메뉴가 다를 수 있습니다.</p>
+            </div>
+
+            {/* Macro Visualization (This Month) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col pt-4">
+                <div className="flex items-center gap-2 mb-4">
+                    <Activity className="w-5 h-5 text-indigo-500" />
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-800">이번 달 거시적 현황 (Macro View)</h3>
+                        <p className="text-[10px] text-slate-400 mt-0.5">*사내 테스트 계정(test_accounts)을 제외한 실제 사용자 데이터 합산</p>
+                    </div>
+                </div>
+                {isLoading ? (
+                    <div className="h-[120px] flex items-center justify-center text-slate-400 text-sm">데이터 집계 중...</div>
+                ) : (
+                    <div className="h-[140px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={macroStats || []} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 11, fontWeight: 'bold', fill: '#64748b' }} />
+                                <Tooltip 
+                                    cursor={{ fill: 'transparent' }}
+                                    formatter={(value: any) => [`${Number(value).toLocaleString()} 원`, '금액']}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                                <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={24}>
+                                    {macroStats?.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 gap-3">

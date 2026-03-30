@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Users, AlertTriangle, Activity, Lock } from 'lucide-react'
@@ -10,6 +12,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'
 
 export default function AdminUsersPage() {
     const supabase = createClient()
+    const [excludeTestAccounts, setExcludeTestAccounts] = useState(true)
 
     const { data: roleData, isLoading: roleLoading } = useQuery({
         queryKey: ['admin_role'],
@@ -22,8 +25,11 @@ export default function AdminUsersPage() {
     })
 
     const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['admin_user_stats'],
+        queryKey: ['admin_user_stats', excludeTestAccounts],
         queryFn: async () => {
+            const { data: testAccounts } = await supabase.from('test_accounts').select('user_id')
+            const testUserIds = testAccounts?.map(t => t.user_id) || []
+
             const { data, error } = await supabase
                 .from('transactions')
                 .select('type, amount, user_id, category_id, created_at, description, id')
@@ -31,6 +37,11 @@ export default function AdminUsersPage() {
                 .limit(1000) // Limit for demo purposes
 
             if (error) throw error
+
+            let validData = data
+            if (excludeTestAccounts && testUserIds.length > 0) {
+                validData = data.filter(tx => !testUserIds.includes(tx.user_id))
+            }
 
             const usersSet = new Set()
             let totalIncome = 0
@@ -43,7 +54,7 @@ export default function AdminUsersPage() {
                 timelineData[format(subDays(new Date(), i), 'MM-dd')] = { name: format(subDays(new Date(), i), 'MM-dd'), amount: 0 }
             }
 
-            data.forEach((tx) => {
+            validData.forEach((tx) => {
                 if (tx.user_id) usersSet.add(tx.user_id)
                 const amt = Number(tx.amount)
                 
@@ -64,7 +75,7 @@ export default function AdminUsersPage() {
 
             return {
                 totalUsers: usersSet.size,
-                totalTransactions: data.length,
+                totalTransactions: validData.length,
                 totalIncome,
                 totalExpense,
                 pieData: [
@@ -72,7 +83,7 @@ export default function AdminUsersPage() {
                     { name: '수입', value: typeDistribution.income }
                 ],
                 lineData: Object.values(timelineData),
-                recentTransactions: data.slice(0, 10) // Top 10 for log
+                recentTransactions: validData.slice(0, 10) // Top 10 for log
             }
         }
     })
@@ -88,11 +99,22 @@ export default function AdminUsersPage() {
                     <Users className="text-rose-500 w-5 h-5" />
                     <h2 className="text-lg font-bold text-slate-800">사용자 데이터 관리</h2>
                 </div>
-                {isCS && (
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200">
-                        <Lock className="w-3 h-3" /> CS 권한 (데이터 마스킹 활성화)
-                    </div>
-                )}
+                <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={excludeTestAccounts} 
+                            onChange={(e) => setExcludeTestAccounts(e.target.checked)}
+                            className="w-4 h-4 text-rose-500 rounded border-slate-300"
+                        />
+                        테스트 계정 제외
+                    </label>
+                    {isCS && (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200 ml-2">
+                            <Lock className="w-3 h-3" /> CS 권한 (데이터 마스킹 활성화)
+                        </div>
+                    )}
+                </div>
             </div>
             
             <div className="grid grid-cols-2 gap-3">

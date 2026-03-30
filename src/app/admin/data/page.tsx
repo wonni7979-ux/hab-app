@@ -3,8 +3,49 @@
 import { FileUp, FileDown, AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from "@/components/ui/progress"
+import { createClient } from '@/lib/supabase/client'
+import { useState } from 'react'
 
 export default function AdminDataPage() {
+    const supabase = createClient()
+    const [isExporting, setIsExporting] = useState(false)
+
+    const handleBackup = async () => {
+        try {
+            setIsExporting(true)
+            const { data, error } = await supabase.from('transactions').select('*').order('created_at', { ascending: false })
+            if (error) throw error
+
+            if (!data || data.length === 0) {
+                alert('추출할 데이터가 없습니다.')
+                return
+            }
+
+            // Generate CSV
+            const headers = Object.keys(data[0]).join(',')
+            const rows = data.map(row => 
+                Object.values(row).map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')
+            )
+            const csvContent = [headers, ...rows].join('\n')
+            
+            // Add BOM for Excel UTF-8
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF])
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' })
+            
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.setAttribute('download', `system_transactions_backup_${new Date().toISOString().split('T')[0]}.csv`)
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+        } catch (err: any) {
+            alert('데이터 추출 중 오류 발생: ' + err.message)
+        } finally {
+            setIsExporting(false)
+        }
+    }
+
     return (
         <div className="p-4 space-y-6">
             <div className="flex items-center gap-2 mb-2">
@@ -73,10 +114,14 @@ export default function AdminDataPage() {
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mt-4 flex justify-between items-center">
                 <div className="flex flex-col gap-1">
                     <span className="text-sm font-bold text-slate-700">시스템 전체 백업 추출</span>
-                    <span className="text-xs text-slate-500">데이터베이스 덤프를 생성합니다. (부하 주의)</span>
+                    <span className="text-xs text-slate-500">데이터베이스 덤프(CSV)를 다운로드합니다.</span>
                 </div>
-                <Button className="bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs gap-2">
-                    <FileDown size={14} /> DB 백업
+                <Button 
+                    onClick={handleBackup} 
+                    disabled={isExporting} 
+                    className="bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs gap-2"
+                >
+                    <FileDown size={14} /> {isExporting ? '추출 중...' : 'DB 백업 (CSV)'}
                 </Button>
             </div>
         </div>
