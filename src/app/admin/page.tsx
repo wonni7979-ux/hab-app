@@ -3,49 +3,34 @@
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity, MessageSquareText } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { startOfMonth, endOfMonth } from 'date-fns'
+import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity, MessageSquareText, Smartphone, Database, Clock, PieChart as PieChartIcon } from 'lucide-react'
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function AdminIndexPage() {
     const supabase = createClient()
 
-    // Fetch this month's macro statistics
+    // Fetch KPI and Macro Stats via secure RPC
     const { data: macroStats, isLoading } = useQuery({
-        queryKey: ['admin_macro_stats'],
+        queryKey: ['admin_macro_stats_v2'],
         queryFn: async () => {
-            const start = startOfMonth(new Date()).toISOString()
-            const end = endOfMonth(new Date()).toISOString()
-
-            // Fetch test accounts list
-            const { data: testAccounts } = await supabase.from('test_accounts').select('user_id')
-            const testUserIds = testAccounts?.map(t => t.user_id) || []
-
-            // Fetch transactions for this month
-            const { data, error } = await supabase
-                .from('transactions')
-                .select('amount, type, user_id')
-                .gte('created_at', start)
-                .lte('created_at', end)
-
-            if (error) return null
-
-            // Filter out test accounts for accurate macro stats
-            const validData = data.filter(tx => !testUserIds.includes(tx.user_id))
-
-            let income = 0
-            let expense = 0
-            validData.forEach(tx => {
-                if (tx.type === 'income') income += Number(tx.amount)
-                if (tx.type === 'expense') expense += Number(tx.amount)
-            })
-
-            return [
-                { name: '유입액 (수입)', value: income, fill: '#3b82f6' },
-                { name: '지출액 (비용)', value: expense, fill: '#ef4444' }
-            ]
+            const { data, error } = await supabase.rpc('get_admin_macro_stats')
+            if (error) {
+                console.error("RPC Error:", error)
+                return null
+            }
+            // Add custom fill colors to 'this_month'
+            if (data?.this_month) {
+                data.this_month = data.this_month.map((item: any) => ({
+                    ...item,
+                    name: item.name === 'income' ? '유입액 (수입)' : '지출액 (비용)',
+                    fill: item.name === 'income' ? '#3b82f6' : '#ef4444'
+                }))
+            }
+            return data
         }
     })
+
+    const PIE_COLORS = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6'];
 
     const adminMenus = [
         {
@@ -129,38 +114,136 @@ export default function AdminIndexPage() {
                 <p className="text-sm text-slate-500 mt-1">시스템 권한에 따라 접근할 수 있는 메뉴가 다를 수 있습니다.</p>
             </div>
 
-            {/* Macro Visualization (This Month) */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col pt-4">
-                <div className="flex items-center gap-2 mb-4">
-                    <Activity className="w-5 h-5 text-indigo-500" />
-                    <div>
-                        <h3 className="text-sm font-bold text-slate-800">이번 달 거시적 현황 (Macro View)</h3>
-                        <p className="text-[10px] text-slate-400 mt-0.5">*사내 테스트 계정(test_accounts)을 제외한 실제 사용자 데이터 합산</p>
+            {/* Top Level KPIs */}
+            {isLoading ? (
+                <div className="h-24 bg-slate-100 rounded-2xl animate-pulse"></div>
+            ) : (
+                <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-blue-500 rounded-2xl p-4 text-white shadow-sm flex flex-col justify-between">
+                        <div className="flex justify-between items-start opacity-80">
+                            <span className="text-xs font-bold">총 가입자 수</span>
+                            <Users className="w-4 h-4" />
+                        </div>
+                        <div className="text-2xl font-black mt-2">{macroStats?.total_users?.toLocaleString() || 0} 명</div>
+                    </div>
+                    <div className="bg-emerald-500 rounded-2xl p-4 text-white shadow-sm flex flex-col justify-between">
+                        <div className="flex justify-between items-start opacity-80">
+                            <span className="text-xs font-bold">DAU (일일 활성)</span>
+                            <Smartphone className="w-4 h-4" />
+                        </div>
+                        <div className="text-2xl font-black mt-2">{macroStats?.dau?.toLocaleString() || 0} 명</div>
+                    </div>
+                    <div className="bg-amber-500 rounded-2xl p-4 text-white shadow-sm flex flex-col justify-between">
+                        <div className="flex justify-between items-start opacity-80">
+                            <span className="text-xs font-bold">누적 거래 건수</span>
+                            <Database className="w-4 h-4" />
+                        </div>
+                        <div className="text-2xl font-black mt-2">{macroStats?.total_tx?.toLocaleString() || 0} 건</div>
                     </div>
                 </div>
-                {isLoading ? (
-                    <div className="h-[120px] flex items-center justify-center text-slate-400 text-sm">데이터 집계 중...</div>
-                ) : (
-                    <div className="h-[140px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={macroStats || []} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 11, fontWeight: 'bold', fill: '#64748b' }} />
-                                <Tooltip 
-                                    cursor={{ fill: 'transparent' }}
-                                    formatter={(value: any) => [`${Number(value).toLocaleString()} 원`, '금액']}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                />
-                                <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={24}>
-                                    {macroStats?.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+            )}
+
+            {/* Macro Visualization (This Month & Trends) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. 수입 vs 지출 바 차트 */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Activity className="w-5 h-5 text-indigo-500" />
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-800">이번 달 수입 vs 지출</h3>
+                        </div>
                     </div>
-                )}
+                    {isLoading ? (
+                        <div className="h-[140px] flex items-center justify-center text-slate-400 text-sm animate-pulse bg-slate-50 rounded-xl" />
+                    ) : (
+                        <div className="h-[140px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={macroStats?.this_month || []} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 11, fontWeight: 'bold', fill: '#64748b' }} />
+                                    <Tooltip 
+                                        cursor={{ fill: 'transparent' }}
+                                        formatter={(value: any) => [`${Number(value).toLocaleString()} 원`, '금액']}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={24}>
+                                        {macroStats?.this_month?.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
+                </div>
+
+                {/* 2. 인기 카테고리 (Pie Chart) */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+                    <div className="flex items-center gap-2 mb-2">
+                        <PieChartIcon className="w-5 h-5 text-pink-500" />
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-800">인기 지출 카테고리 TOP 5</h3>
+                        </div>
+                    </div>
+                    {isLoading ? (
+                        <div className="h-[140px] flex items-center justify-center text-slate-400 text-sm animate-pulse bg-slate-50 rounded-xl" />
+                    ) : (
+                        <div className="h-[160px] w-full mt-[-10px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={macroStats?.top_categories || []}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={40}
+                                        outerRadius={70}
+                                        paddingAngle={5}
+                                        dataKey="count"
+                                        stroke="none"
+                                    >
+                                        {macroStats?.top_categories?.map((entry: any, index: number) => (
+                                            <Cell key={`pie-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip 
+                                        formatter={(value: any) => [`${value}건`, '기록 수']}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
+                </div>
+
+                {/* 3. 활성 시간대 (Line Chart) */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:col-span-2">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Clock className="w-5 h-5 text-sky-500" />
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-800">활성 기록 시간대 분포</h3>
+                        </div>
+                    </div>
+                    {isLoading ? (
+                        <div className="h-[140px] flex items-center justify-center text-slate-400 text-sm animate-pulse bg-slate-50 rounded-xl" />
+                    ) : (
+                        <div className="h-[160px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={macroStats?.peak_hours || []} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="hour" tickFormatter={(v) => `${v}시`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
+                                    <Tooltip 
+                                        formatter={(value: any) => [`${value}건`, '기록 수']}
+                                        labelFormatter={(label) => `${label}시`}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Line type="monotone" dataKey="count" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 3, fill: '#0ea5e9' }} activeDot={{ r: 6 }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3">
