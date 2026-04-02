@@ -33,7 +33,7 @@ export default function AdminRetentionPage() {
 
             latestTxMap.forEach((lastActive, userId) => {
                 const days = differenceInDays(now, lastActive)
-                if (days >= 7) {
+                if (days >= 3) {
                     inactiveList.push({ userId, lastActive, daysInactive: days })
                 }
             })
@@ -43,7 +43,7 @@ export default function AdminRetentionPage() {
     })
 
     const handleSendPush = (userId: string) => {
-        alert(`사용자 ${userId.substring(0, 8)}... 에게 독려 푸시 알림을 발송했습니다!\n"지난 주 지출 내역을 10초 만에 정리해 보세요!"`)
+        alert(`사용자 ${userId.substring(0, 8)}... 에게 독려 푸시 알림을 발송했습니다!\n\n[발송 내용]\n"다시 시작해보세요! 잊고 있던 지출 내역을 지금 바로 기록해 볼까요?"`)
     }
 
     if (isLoading) return <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">이탈 위험 데이터 집계 중...</div>
@@ -58,9 +58,9 @@ export default function AdminRetentionPage() {
             <div className="bg-pink-50 p-4 rounded-2xl border border-pink-100 flex items-start gap-3">
                 <BellRing className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" />
                 <div>
-                    <h4 className="text-sm font-bold text-pink-800">장기 미입력자 맞춤형 푸시 (Retention Push)</h4>
+                    <h4 className="text-sm font-bold text-pink-800">장기 미입력자 타겟팅 푸시 (Retention Push)</h4>
                     <p className="text-xs text-pink-700/80 mt-1 leading-relaxed">
-                        최근 7일 이상 가계부를 작성하지 않은 사용자에게 &quot;지출 내역 10초 작성&quot; 독려 메시지를 보내어 앱 재방문을 유도합니다.
+                        최근 3일 이상 접속하지 않은(가계부를 미작성한) 사용자에게 &quot;다시 시작해보세요!&quot; 라는 리마인드 푸시를 발송하여 재방문을 유도합니다.
                     </p>
                 </div>
             </div>
@@ -69,7 +69,7 @@ export default function AdminRetentionPage() {
                 <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                         <CalendarOff size={14} className="text-slate-500" />
-                        7일 이상 미접속 / 미입력 경고 명단
+                        3일 이상 미접속 경고 명단
                     </h3>
                     <span className="text-xs font-bold bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full">
                         {inactiveUsers?.length || 0} 명
