@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity, MessageSquareText, Smartphone, Database, Clock, PieChart as PieChartIcon } from 'lucide-react'
+import { Tags, CreditCard, Users, BellRing, Megaphone, FileUp, Activity, MessageSquareText, Smartphone, Database, Clock, PieChart as PieChartIcon, ShieldAlert } from 'lucide-react'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function AdminIndexPage() {
@@ -96,6 +96,14 @@ export default function AdminIndexPage() {
             href: '/admin/data',
             color: 'text-emerald-500',
             bg: 'bg-emerald-50'
+        },
+        {
+            title: '시스템 로그 및 보안',
+            desc: '비정상 접속 차단 및 사용자 오류 에러 트래픽 모니터링',
+            icon: ShieldAlert,
+            href: '/admin/logs',
+            color: 'text-red-600',
+            bg: 'bg-red-50'
         },
         {
             title: '1:1 고객 문의 관리 (CS)',

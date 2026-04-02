@@ -2,6 +2,8 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { logSystemEvent } from '@/app/actions/logActions'
+import { AdminAccessLogger } from '@/components/admin/AdminAccessLogger'
 
 export default async function AdminLayout({
     children,
@@ -23,12 +25,14 @@ export default async function AdminLayout({
         .single()
 
     if (!adminData) {
-        // Not an admin, redirect to home
+        // Log unauthorized access
+        await logSystemEvent('WARNING', 'admin_auth', '비인가 관리자센터 접근 시도 거부', { uid: user.id })
         redirect('/')
     }
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
+            <AdminAccessLogger />
             {/* Admin Header */}
             <header className="sticky top-0 z-50 bg-white/80 border-b border-slate-100 backdrop-blur-xl">
                 <div className="flex items-center justify-between h-14 px-4 max-w-md mx-auto relative">
