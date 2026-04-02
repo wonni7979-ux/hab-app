@@ -16,18 +16,18 @@ BEGIN
         RAISE EXCEPTION 'Not authorized';
     END IF;
 
-    SELECT json_agg(
-        json_build_object(
-            'id', u.id,
-            'email', u.email,
-            'created_at', u.created_at,
-            'banned_until', u.banned_until,
-            'is_admin', CASE WHEN a.id IS NOT NULL THEN true ELSE false END
-        )
-    ) INTO _result
-    FROM auth.users u
-    LEFT JOIN public.admins a ON u.id = a.id
-    ORDER BY u.created_at DESC;
+    SELECT json_agg(row_to_json(t)) INTO _result
+    FROM (
+        SELECT 
+            u.id, 
+            u.email, 
+            u.created_at, 
+            u.banned_until,
+            CASE WHEN a.id IS NOT NULL THEN true ELSE false END as is_admin
+        FROM auth.users u
+        LEFT JOIN public.admins a ON u.id = a.id
+        ORDER BY u.created_at DESC
+    ) t;
 
     RETURN COALESCE(_result, '[]'::json);
 END;
