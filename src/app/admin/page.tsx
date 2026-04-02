@@ -156,8 +156,8 @@ export default function AdminIndexPage() {
                     {isLoading ? (
                         <div className="h-[140px] flex items-center justify-center text-slate-400 text-sm animate-pulse bg-slate-50 rounded-xl" />
                     ) : (
-                        <div className="h-[140px] w-full">
-                            <ResponsiveContainer width="99%" height="100%" minWidth={1} minHeight={140}>
+                        <div className="w-full">
+                            <ResponsiveContainer width="100%" height={140}>
                                 <BarChart data={macroStats?.this_month || []} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                                     <XAxis type="number" hide />
@@ -189,8 +189,8 @@ export default function AdminIndexPage() {
                     {isLoading ? (
                         <div className="h-[140px] flex items-center justify-center text-slate-400 text-sm animate-pulse bg-slate-50 rounded-xl" />
                     ) : (
-                        <div className="h-[160px] w-full mt-[-10px]">
-                            <ResponsiveContainer width="99%" height="100%" minWidth={1} minHeight={140}>
+                        <div className="w-full mt-[-10px]">
+                            <ResponsiveContainer width="100%" height={160}>
                                 <PieChart>
                                     <Pie
                                         data={macroStats?.top_categories || []}
@@ -227,8 +227,8 @@ export default function AdminIndexPage() {
                     {isLoading ? (
                         <div className="h-[140px] flex items-center justify-center text-slate-400 text-sm animate-pulse bg-slate-50 rounded-xl" />
                     ) : (
-                        <div className="h-[160px] w-full">
-                            <ResponsiveContainer width="99%" height="100%" minWidth={1} minHeight={140}>
+                        <div className="w-full">
+                            <ResponsiveContainer width="100%" height={160}>
                                 <LineChart data={macroStats?.peak_hours || []} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                     <XAxis dataKey="hour" tickFormatter={(v) => `${v}시`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
