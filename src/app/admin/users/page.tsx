@@ -1,218 +1,222 @@
 'use client'
 
 import { useState } from 'react'
-
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { Users, AlertTriangle, Activity, Lock } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts'
-import { format, subDays } from 'date-fns'
+import { Users, Shield, ShieldOff, MailWarning, UserX, UserSearch, AlertCircle, Trash2, KeyRound } from 'lucide-react'
+import { format } from 'date-fns'
+import { toast } from 'sonner'
+import { sendPasswordResetAdmin } from './actions'
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+type AdminUser = {
+    id: string
+    email: string
+    created_at: string
+    banned_until: string | null
+    is_admin: boolean
+}
 
-export default function AdminUsersPage() {
+export default function AdminUsersManagementPage() {
     const supabase = createClient()
-    const [excludeTestAccounts, setExcludeTestAccounts] = useState(true)
+    const queryClient = useQueryClient()
+    const [searchTerm, setSearchTerm] = useState('')
+    const [isLoadingAction, setIsLoadingAction] = useState<string | null>(null)
 
-    const { data: roleData, isLoading: roleLoading } = useQuery({
-        queryKey: ['admin_role'],
+    // Fetch Users via safe RPC
+    const { data: users, isLoading } = useQuery({
+        queryKey: ['admin_users_list'],
         queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return null
-            const { data } = await supabase.from('admins').select('role').eq('id', user.id).single()
-            return data?.role || 'cs'
+            const { data, error } = await supabase.rpc('admin_get_users')
+            if (error) {
+                toast.error("사용자 로드 실패: " + error.message)
+                return []
+            }
+            return (data as AdminUser[]) || []
         }
     })
 
-    const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['admin_user_stats', excludeTestAccounts],
-        queryFn: async () => {
-            const { data: testAccounts } = await supabase.from('test_accounts').select('user_id')
-            const testUserIds = testAccounts?.map(t => t.user_id) || []
+    const filteredUsers = users?.filter(u => u.email.toLowerCase().includes(searchTerm.toLowerCase())) || []
 
-            const { data, error } = await supabase
-                .from('transactions')
-                .select('type, amount, user_id, category_id, created_at, description, id')
-                .order('created_at', { ascending: false })
-                .limit(1000) // Limit for demo purposes
+    const revalidate = () => queryClient.invalidateQueries({ queryKey: ['admin_users_list'] })
 
-            if (error) throw error
-
-            let validData = data
-            if (excludeTestAccounts && testUserIds.length > 0) {
-                validData = data.filter(tx => !testUserIds.includes(tx.user_id))
-            }
-
-            const usersSet = new Set()
-            let totalIncome = 0
-            let totalExpense = 0
-            const typeDistribution: any = { income: 0, expense: 0 }
-            const timelineData: any = {}
-
-            // Populate last 7 days timeline structure
-            for (let i = 6; i >= 0; i--) {
-                timelineData[format(subDays(new Date(), i), 'MM-dd')] = { name: format(subDays(new Date(), i), 'MM-dd'), amount: 0 }
-            }
-
-            validData.forEach((tx) => {
-                if (tx.user_id) usersSet.add(tx.user_id)
-                const amt = Number(tx.amount)
-                
-                if (tx.type === 'income') {
-                    totalIncome += amt
-                    typeDistribution.income += amt
-                }
-                if (tx.type === 'expense') {
-                    totalExpense += amt
-                    typeDistribution.expense += amt
-                }
-
-                const dateStr = format(new Date(tx.created_at), 'MM-dd')
-                if (timelineData[dateStr]) {
-                    timelineData[dateStr].amount += 1 // Count transactions per day
-                }
-            })
-
-            return {
-                totalUsers: usersSet.size,
-                totalTransactions: validData.length,
-                totalIncome,
-                totalExpense,
-                pieData: [
-                    { name: '지출', value: typeDistribution.expense },
-                    { name: '수입', value: typeDistribution.income }
-                ],
-                lineData: Object.values(timelineData),
-                recentTransactions: validData.slice(0, 10) // Top 10 for log
-            }
+    // Action Handlers
+    const handleToggleRole = async (userId: string, targetAdminStatus: boolean) => {
+        if (!confirm(targetAdminStatus ? '이 사용자에게 관리자 권한을 부여하시겠습니까?' : '관리자 권한을 회수하시겠습니까? (이후 이 페이지 접근 불가)')) return
+        setIsLoadingAction(userId)
+        
+        const { error } = await supabase.rpc('admin_toggle_role', { target_user_id: userId, grant_admin: targetAdminStatus })
+        if (error) toast.error('권한 변경 실패: ' + error.message)
+        else {
+            toast.success('권한이 성공적으로 변경되었습니다.')
+            revalidate()
         }
-    })
+        setIsLoadingAction(null)
+    }
 
-    if (roleLoading || statsLoading) return <div className="p-8 text-center text-slate-500">데이터 불러오는 중...</div>
+    const handleToggleBan = async (userId: string, targetBanStatus: boolean) => {
+        if (!confirm(targetBanStatus ? '이 사용자를 시스템에서 영구 밴(Ban) 차단 처리하시겠습니까? 로그인이 즉시 불가능해집니다.' : '차단을 해제하여 접속을 허용하시겠습니까?')) return
+        setIsLoadingAction(userId)
+        
+        const { error } = await supabase.rpc('admin_ban_user', { target_user_id: userId, is_banned: targetBanStatus })
+        if (error) toast.error('차단 처리 실패: ' + error.message)
+        else {
+            toast.success(targetBanStatus ? '사용자가 차단되었습니다.' : '사용자 차단이 해제되었습니다.')
+            revalidate()
+        }
+        setIsLoadingAction(null)
+    }
 
-    const isCS = roleData === 'cs'
+    const handleDelete = async (userId: string) => {
+        const confirmText = prompt('이 사용자의 계정과 모든 데이터를 완벽하게 삭제합니다. 복구가 불가능합니다.\n정말 삭제하시겠습니까?\n삭제를 원하시면 "삭제"라고 입력해주세요.')
+        if (confirmText !== '삭제') return
+        setIsLoadingAction(userId)
+        
+        const { error } = await supabase.rpc('admin_delete_user', { target_user_id: userId })
+        if (error) toast.error('삭제 실패: ' + error.message)
+        else {
+            toast.success('사용자가 시스템에서 영구 삭제되었습니다.')
+            revalidate()
+        }
+        setIsLoadingAction(null)
+    }
+
+    const handleResetPassword = async (email: string, userId: string) => {
+        if (!confirm(`[${email}] 사용자에게 강제 비밀번호 초기화 메일을 발송하시겠습니까?`)) return
+        setIsLoadingAction(userId)
+        
+        const res = await sendPasswordResetAdmin(email)
+        if (res.error) toast.error(res.error)
+        else toast.success(res.success)
+        
+        setIsLoadingAction(null)
+    }
 
     return (
-        <div className="p-4 space-y-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                    <Users className="text-rose-500 w-5 h-5" />
-                    <h2 className="text-lg font-bold text-slate-800">사용자 데이터 관리</h2>
-                </div>
-                <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            checked={excludeTestAccounts} 
-                            onChange={(e) => setExcludeTestAccounts(e.target.checked)}
-                            className="w-4 h-4 text-rose-500 rounded border-slate-300"
-                        />
-                        테스트 계정 제외
-                    </label>
-                    {isCS && (
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200 ml-2">
-                            <Lock className="w-3 h-3" /> CS 권한 (데이터 마스킹 활성화)
-                        </div>
-                    )}
-                </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
-                    <span className="text-xs font-bold text-slate-400 mb-1">최근 생성된 거래 내역</span>
-                    <span className="text-xl font-black text-slate-800">{stats?.totalTransactions.toLocaleString()} 건</span>
-                </div>
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
-                    <span className="text-xs font-bold text-slate-400 mb-1">활동 중인 고유 사용자</span>
-                    <span className="text-xl font-black text-slate-800">{stats?.totalUsers.toLocaleString()} 명</span>
-                </div>
-            </div>
-
-            {/* Visualizations */}
-            <div className="grid grid-cols-1 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-800 mb-4">수입/지출 비율</h3>
-                    <div className="h-[200px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={stats?.pieData}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {stats?.pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.name === '수입' ? '#3b82f6' : '#ef4444'} />
-                                    ))}
-                                </Pie>
-                                <Tooltip formatter={(value: any) => `${Number(value).toLocaleString()} 원`} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="flex justify-center gap-4 text-xs font-bold mt-2">
-                        <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-500" /> 수입</div>
-                        <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-500" /> 지출</div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2 text-emerald-500">
-                        <Activity className="w-4 h-4" /> 일별 사용자 참여도 (트랜잭션 수)
-                    </h3>
-                    <div className="h-[150px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={stats?.lineData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} stroke="#94a3b8" />
-                                <YAxis hide />
-                                <Tooltip 
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                                    formatter={(value: any) => [`${value} 건`, '거래량']}
-                                />
-                                <Line type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-
-            {/* Recent Logs & Data Masking Implementation */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
-                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-slate-800">최근 거래 실시간 로그</h3>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Top 10</span>
-                </div>
-                <div className="divide-y divide-slate-100">
-                    {stats?.recentTransactions.map((tx) => (
-                        <div key={tx.id} className="p-3 px-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-slate-400 shrink-0">{format(new Date(tx.created_at), 'HH:mm')}</span>
-                                {/* Data Masking Logic */}
-                                <span className="text-sm font-semibold text-slate-700 truncate max-w-[150px]">
-                                    {isCS ? (tx.description ? tx.description.substring(0, 2) + '***' : '비공개 내역') : (tx.description || '내역 없음')}
-                                </span>
-                            </div>
-                            <div className="text-right">
-                                <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-blue-500' : 'text-slate-800'}`}>
-                                    {isCS && tx.amount > 100000 ? '***,***' : Number(tx.amount).toLocaleString()} 원
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                    {!stats?.recentTransactions.length && (
-                        <div className="p-6 text-center text-slate-400 text-xs">최근 데이터가 없습니다.</div>
-                    )}
-                </div>
-            </div>
-
-            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-start gap-3 mt-8">
-                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+        <div className="p-4 py-6 max-w-6xl mx-auto space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h4 className="text-sm font-bold text-amber-800">보안 및 개인정보 보호 (Privacy First)</h4>
-                    <p className="text-xs text-amber-700/80 mt-1 leading-relaxed">
-                        RBAC 통제: 최고 관리자(superadmin) 외에는 민감한 사용자 메모나 고액 거래 내역이 <strong className="font-extrabold text-amber-900">마스킹(*)</strong> 처리되어 표시됩니다.
+                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                        <Users className="w-6 h-6 text-indigo-500" />
+                        시스템 회원 관리 (User Management)
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                        전체 회원을 조회하고 권한 제어, 비밀번호 초기화, 차단(Ban) 등을 수행합니다.
                     </p>
+                </div>
+                
+                <div className="relative">
+                    <UserSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <input 
+                        type="text" 
+                        placeholder="이메일 검색..." 
+                        className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-64"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-600">
+                        <thead className="bg-slate-50 border-b border-slate-100 text-xs uppercase font-bold text-slate-500">
+                            <tr>
+                                <th className="px-4 py-4 w-1/3">계정 (이메일)</th>
+                                <th className="px-4 py-4 w-1/6">가입일시</th>
+                                <th className="px-4 py-4 w-1/6">신분 / 상태</th>
+                                <th className="px-4 py-4 text-right">제어 메뉴 (Actions)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                                        데이터를 불러오는 중입니다...
+                                    </td>
+                                </tr>
+                            ) : filteredUsers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                                        검색된 회원이 없습니다.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredUsers.map((user) => {
+                                    const isBanned = user.banned_until !== null && new Date(user.banned_until) > new Date()
+                                    const isProcessing = isLoadingAction === user.id
+
+                                    return (
+                                        <tr key={user.id} className={`hover:bg-slate-50 transition-colors ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <td className="px-4 py-4">
+                                                <div className="font-bold text-slate-800 break-all">{user.email}</div>
+                                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">{user.id}</div>
+                                            </td>
+                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                {format(new Date(user.created_at), 'yyyy.MM.dd')}
+                                                <div className="text-[10px] text-slate-400 mt-0.5">{format(new Date(user.created_at), 'HH:mm')}</div>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    {user.is_admin ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-fuchsia-100 text-fuchsia-700 text-[10px] font-bold rounded-md">
+                                                            <Shield className="w-3 h-3" /> 최고 관리자
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md">
+                                                            일반 사용자
+                                                        </span>
+                                                    )}
+
+                                                    {isBanned && (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-md">
+                                                            <AlertCircle className="w-3 h-3" /> 접속 차단(Ban)
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center justify-end gap-2 flex-wrap">
+                                                    {/* 비밀번호 초기화 */}
+                                                    <button 
+                                                        onClick={() => handleResetPassword(user.email, user.id)}
+                                                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                                                    >
+                                                        <KeyRound className="w-3.5 h-3.5" /> 초기화 메일
+                                                    </button>
+                                                    
+                                                    {/* 권한 변경 */}
+                                                    <button 
+                                                        onClick={() => handleToggleRole(user.id, !user.is_admin)}
+                                                        className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ${user.is_admin ? 'bg-fuchsia-50 text-fuchsia-600 hover:bg-fuchsia-100' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                    >
+                                                        {user.is_admin ? <ShieldOff className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
+                                                        {user.is_admin ? '일반 유저로 변경' : '관리자 지정'}
+                                                    </button>
+
+                                                    {/* 차단(Ban) */}
+                                                    <button 
+                                                        onClick={() => handleToggleBan(user.id, !isBanned)}
+                                                        className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ${isBanned ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                                                    >
+                                                        {isBanned ? <MailWarning className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                                                        {isBanned ? '차단 해제 (Unban)' : '계속 정지 (Ban)'}
+                                                    </button>
+
+                                                    {/* 영구 삭제 */}
+                                                    <button 
+                                                        onClick={() => handleDelete(user.id)}
+                                                        className="px-2.5 py-1.5 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" /> 삭제
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
